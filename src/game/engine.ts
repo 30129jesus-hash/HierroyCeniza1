@@ -82,6 +82,8 @@ function makeUnit(s: BattleState, def: CardDef, side: Side): UnitInst {
     defv: def.def ?? 0,
     frozen: 0, poison: 0, poisonT: 0,
     vamp: !!def.vamp,
+    ranged: !!def.ranged, taunt: !!def.taunt, pierce: !!def.pierce,
+    swift: !!def.swift, thorns: def.thorns ?? 0,
     ready: false, fresh: true,
   };
 }
@@ -376,7 +378,7 @@ export function endDeployEnemy(prev: BattleState): BattleState {
 
 function beginAttacks(s: BattleState): BattleState {
   s.phase = 'attackPlayer';
-  s.units.forEach((u) => { if (u) u.ready = !u.fresh && u.frozen <= 0; });
+  s.units.forEach((u) => { if (u) u.ready = (!u.fresh || u.swift) && u.frozen <= 0; });
   const pAtk = canAttackSide(s, 'player');
   if (!pAtk && !canAttackSide(s, 'enemy')) log(s, 'Nadie está listo para atacar. La ronda avanza.', 'sys');
   else if (!pAtk) log(s, 'Ninguna de tus unidades está lista para atacar.', 'info');
@@ -389,7 +391,7 @@ export const canAttackSide = (s: BattleState, side: Side): boolean => {
   const base = side === 'player' ? 0 : 3;
   return [0, 1, 2].some((l) => {
     const u = s.units[base + l];
-    return !!u && u.ready && !u.fresh && u.frozen <= 0;
+    return !!u && u.ready && (!u.fresh || u.swift) && u.frozen <= 0;
   });
 };
 
@@ -397,7 +399,7 @@ export const readyCount = (s: BattleState, side: Side): number => {
   const base = side === 'player' ? 0 : 3;
   return [0, 1, 2].filter((l) => {
     const u = s.units[base + l];
-    return !!u && u.ready && !u.fresh && u.frozen <= 0;
+    return !!u && u.ready && (!u.fresh || u.swift) && u.frozen <= 0;
   }).length;
 };
 
@@ -411,20 +413,30 @@ export function attackTargets(s: BattleState, side: Side, unit: UnitInst): Targe
   const foe = opp(side);
   const t: Target[] = [];
   for (let l = 0; l < 3; l++) if (s.units[slotOf(foe, l)]) t.push({ kind: 'lane', side: foe, lane: l });
-  if (unit.def.ranged || t.length === 0) t.push({ kind: 'hero', side: foe });
+  const taunts = t.filter((x) => x.kind === 'lane' && s.units[slotOf(foe, x.lane)]?.taunt);
+  if (taunts.length > 0) return taunts; // Provocación: hay que derribarlas primero
+  if (unit.ranged || t.length === 0) t.push({ kind: 'hero', side: foe });
   return t;
 }
+
+export const foeHasTaunt = (s: BattleState, side: Side): boolean => {
+  const foe = opp(side);
+  return [0, 1, 2].some((l) => s.units[slotOf(foe, l)]?.taunt);
+};
 
 export function performAttack(prev: BattleState, side: Side, attackerSlot: number, target: Target): PlayResult {
   const s = clone(prev);
   const events: BattleEvent[] = [];
   const attacker = s.units[attackerSlot];
-  if (!attacker || s.winner || !attacker.ready || attacker.fresh || attacker.frozen > 0) return { state: prev, events: [] };
+  if (!attacker || s.winner || !attacker.ready || attacker.frozen > 0) return { state: prev, events: [] };
+  if (attacker.fresh && !attacker.swift) return { state: prev, events: [] };
   const expectedPhase = side === 'player' ? 'attackPlayer' : 'attackEnemy';
   if (s.phase !== expectedPhase) return { state: prev, events: [] };
   const foe = opp(side);
   if (target.side !== foe) return { state: prev, events: [] };
-  if (target.kind === 'hero' && !attacker.def.ranged && foeUnitsAlive(s, side) > 0) return { state: prev, events: [] };
+  if (target.kind === 'hero' && !attacker.ranged && foeUnitsAlive(s, side) > 0) return { state: prev, events: [] };
+  const foeTaunts = [0, 1, 2].filter((l) => s.units[slotOf(foe, l)]?.taunt);
+  if (foeTaunts.length > 0 && !(target.kind === 'lane' && foeTaunts.includes(target.lane))) return { state: prev, events: [] };
 
   const lane = laneOf(attackerSlot);
   const tLane = target.kind === 'lane' ? target.lane : null;
@@ -445,15 +457,18 @@ export function performAttack(prev: BattleState, side: Side, attackerSlot: numbe
 
   const defender = s.units[slotOf(foe, target.lane)];
   if (!defender) return { state: prev, events: [] };
-  const hpToDef = armorStrike(s, foe, target.lane, attacker.atk, events);
+  const hpToDef = armorStrike(s, foe, target.lane, attacker.atk, events, 'hit', attacker.pierce);
   const hpToAtt = armorStrike(s, side, lane, defender.atk, events);
-  const dName = s.units[slotOf(foe, target.lane)] ? defender.def.name : defender.def.name;
   log(s, side === 'player'
-    ? `${attacker.def.name} ataca a ${dName}.`
-    : `${attacker.def.name} ataca a tu ${dName}.`,
+    ? `${attacker.def.name} ataca a ${defender.def.name}${attacker.pierce ? ' (perforación)' : ''}.`
+    : `${attacker.def.name} ataca a tu ${defender.def.name}.`,
     side === 'player' ? 'good' : 'bad');
   if (attacker.vamp && hpToDef > 0) healUnit(s, side, lane, hpToDef, events);
   if (defender.vamp && hpToAtt > 0) healUnit(s, foe, target.lane, hpToAtt, events);
+  if (s.units[slotOf(foe, target.lane)] && defender.thorns > 0) {
+    log(s, `Espinas: ${defender.def.name} devuelve ${defender.thorns} de daño.`, side === 'player' ? 'bad' : 'good');
+    armorStrike(s, side, lane, defender.thorns, events, 'hit', true);
+  }
   return { state: s, events };
 }
 
@@ -558,7 +573,8 @@ export function aiPlan(s: BattleState): AiAction[] {
       units[3 + chosen.action.target.lane] = {
         uid: 999, def: card, atk: (card.atk ?? 0) + bonus, hp: (card.hp ?? 0) + bonus,
         maxHp: (card.hp ?? 0) + bonus, defv: card.def ?? 0, frozen: 0, poison: 0, poisonT: 0,
-        vamp: !!card.vamp, ready: false, fresh: true,
+        vamp: !!card.vamp, ranged: !!card.ranged, taunt: !!card.taunt, pierce: !!card.pierce,
+        swift: !!card.swift, thorns: card.thorns ?? 0, ready: false, fresh: true,
       };
     }
     if (card.kind === 'spell' && card.spell?.school === 'fire' && chosen.action.target?.kind === 'lane') {
@@ -579,11 +595,12 @@ export function aiAttackPlan(s: BattleState): AiAttack[] {
   const used = new Set<number>();
   let guard = 0;
 
-  const attackers = () => [3, 4, 5].filter((i) => units[i] && !used.has(i) && units[i]!.ready && units[i]!.frozen <= 0 && !units[i]!.fresh);
+  const attackers = () => [3, 4, 5].filter((i) => units[i] && !used.has(i) && units[i]!.ready && units[i]!.frozen <= 0 && (!units[i]!.fresh || units[i]!.swift));
   const playerUnits = () => [0, 1, 2].filter((l) => units[l]);
-  const canHitHero = (u: UnitInst) => !!u.def.ranged || playerUnits().length === 0;
+  const tauntLanes = () => playerUnits().filter((l) => units[l]!.taunt);
+  const canHitHero = (u: UnitInst) => (u.ranged || playerUnits().length === 0) && tauntLanes().length === 0;
 
-  // ¿Letal al héroe con quienes pueden alcanzarlo?
+  // ¿Letal al héroe con quienes pueden alcanzarlo (sin provocación en contra)?
   const reachTotal = attackers().filter((i) => canHitHero(units[i]!)).reduce((a, i) => a + units[i]!.atk, 0);
   if (reachTotal >= heroHp && heroHp > 0) {
     return attackers().filter((i) => canHitHero(units[i]!)).map((slot) => ({ slot, target: { kind: 'hero' as const, side: 'player' as const } }));
@@ -591,22 +608,24 @@ export function aiAttackPlan(s: BattleState): AiAttack[] {
 
   while (guard++ < 9) {
     let best: { slot: number; target: Target; score: number } | null = null;
+    const taunts = tauntLanes();
+    const candidateLanes = taunts.length > 0 ? taunts : playerUnits();
     for (const slot of attackers()) {
       const att = units[slot]!;
-      if (canHitHero(att)) {
+      if (taunts.length === 0 && canHitHero(att)) {
         let score = att.atk * (heroHp <= 10 ? 1.35 : 1.0);
         if (att.atk >= heroHp) score = 1000;
         if (score > (best?.score ?? 0.7)) best = { slot, target: { kind: 'hero', side: 'player' }, score };
       }
-      for (const l of playerUnits()) {
+      for (const l of candidateLanes) {
         const d = units[l]!;
-        const dmg = Math.max(0, att.atk - d.defv);
-        const ret = Math.max(0, d.atk - att.defv);
+        const dmg = att.pierce ? att.atk : Math.max(0, att.atk - d.defv);
+        const ret = Math.max(0, d.atk - att.defv) + d.thorns;
         let score: number;
         if (dmg >= d.hp) {
-          score = 10 + d.atk * 1.6 + d.def.cost * 0.6;
+          score = 10 + d.atk * 1.6 + d.def.cost * 0.6 + (d.taunt ? 3 : 0);
           if (ret >= att.hp) score -= (att.atk * 1.2 + att.def.cost * 0.6) * 0.92;
-        } else if (att.atk <= d.defv) {
+        } else if (!att.pierce && att.atk <= d.defv) {
           score = 1.2 + d.defv * 0.2; // romper armadura poco a poco
         } else {
           score = dmg * 0.35 - (ret >= att.hp ? att.atk * 1.1 + 2 : ret * 0.2);
@@ -623,12 +642,12 @@ export function aiAttackPlan(s: BattleState): AiAttack[] {
       heroHp = Math.max(0, heroHp - att.atk);
     } else {
       const d = units[chosen.target.lane]!;
-      const absorbed = Math.min(d.defv, att.atk);
+      const absorbed = att.pierce ? 0 : Math.min(d.defv, att.atk);
       d.defv -= absorbed;
       d.hp -= att.atk - absorbed;
       const retAbs = Math.min(att.defv, d.atk);
       att.defv -= retAbs;
-      att.hp -= d.atk - retAbs;
+      att.hp -= d.atk - retAbs + d.thorns;
       if (d.hp <= 0) units[chosen.target.lane] = null;
       if (att.hp <= 0) units[chosen.slot] = null;
     }

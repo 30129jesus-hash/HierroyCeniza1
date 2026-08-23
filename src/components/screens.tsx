@@ -47,6 +47,7 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
     { id: 'story', label: 'Modo Historia', desc: '8 estandartes, 8 jefes', icon: 'flag', hue: 46 },
     { id: 'survival', label: 'Supervivencia', desc: `Récord: ${meta.survivalBest} rondas`, icon: 'infinity', hue: 0 },
     { id: 'versus', label: 'Versus', desc: `${meta.vsWins} duelos ganados`, icon: 'swords', hue: 20 },
+    { id: 'arsenal', label: 'Arsenal', desc: meta.deck.length === 20 ? 'Tu mazo de 20, a tu gusto' : 'Elige tus 20 cartas de guerra', icon: 'helm', hue: 220 },
     { id: 'shop', label: 'Tienda', desc: 'Sobres de recluta y de guerra', icon: 'bag', hue: 130 },
     { id: 'collection', label: 'Colección', desc: `${Object.values(meta.collection).reduce((a, b) => a + b, 0)} cartas reunidas`, icon: 'cards', hue: 210 },
   ];
@@ -413,7 +414,7 @@ export function CollectionScreen({ onBack }: { onBack: () => void }) {
             ))}
           </div>
           <p className="font-body text-[0.68rem] uppercase tracking-widest text-bone-500">
-            Mazo de batalla: <b className="text-bone-100">{deckSize} cartas</b> (todas tus copias entran; se barajan 20 al azar)
+            En batalla se usan <b className="text-bone-100">20 cartas</b>: tu mazo del Arsenal, o un barajado de tu colección ({deckSize} copias)
           </p>
         </div>
         <div className="flex flex-wrap gap-4 justify-center sm:justify-start">
@@ -430,6 +431,170 @@ export function CollectionScreen({ onBack }: { onBack: () => void }) {
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ================= ARSENAL (armador de mazo) ================= */
+
+const shuffleIds = (arr: string[]): string[] => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+export function DeckScreen({ onBack }: { onBack: () => void }) {
+  const { meta, dispatch } = useMeta();
+  const [deck, setDeck] = useState<string[]>(meta.deck);
+  const [toast, setToast] = useState(false);
+
+  const owned = useMemo(
+    () => PLAYER_CARDS.filter((c) => (meta.collection[c.id] ?? 0) > 0)
+      .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name)),
+    [meta.collection],
+  );
+  const countIn = (id: string) => deck.filter((d) => d === id).length;
+  const maxCopies = (id: string) => Math.min(3, meta.collection[id] ?? 0);
+
+  const add = (id: string) => {
+    if (deck.length >= 20) { sfx.error(); return; }
+    if (countIn(id) >= maxCopies(id)) { sfx.error(); return; }
+    sfx.card();
+    setDeck([...deck, id]);
+  };
+  const remove = (id: string) => {
+    const i = deck.indexOf(id);
+    if (i < 0) return;
+    sfx.click();
+    setDeck(deck.filter((_, j) => j !== i));
+  };
+  const auto = () => {
+    const pool: string[] = [];
+    owned.forEach((c) => { for (let i = 0; i < maxCopies(c.id); i++) pool.push(c.id); });
+    setDeck(shuffleIds(pool).slice(0, 20));
+    sfx.pack();
+  };
+  const save = () => {
+    if (deck.length !== 20) { sfx.error(); return; }
+    dispatch({ type: 'setDeck', deck });
+    sfx.coin();
+    setToast(true);
+    setTimeout(() => setToast(false), 1800);
+  };
+
+  const curve = useMemo(() => {
+    const buckets = [0, 0, 0, 0, 0, 0, 0];
+    deck.forEach((id) => { const c = cardById(id).cost; buckets[Math.min(c, 7) - 1] += 1; });
+    const max = Math.max(1, ...buckets);
+    return { buckets, max };
+  }, [deck]);
+
+  const deckList = useMemo(() => {
+    const m = new Map<string, number>();
+    deck.forEach((id) => m.set(id, (m.get(id) ?? 0) + 1));
+    return [...m.entries()].sort((a, b) => cardById(a[0]).cost - cardById(b[0]).cost);
+  }, [deck]);
+
+  const complete = deck.length === 20;
+
+  return (
+    <div className="bg-arena min-h-screen relative">
+      <div className="bg-vignette absolute inset-0 pointer-events-none" />
+      <Embers n={8} />
+      <Header title="El Arsenal" sub="Forja tu mazo de guerra · 20 cartas, máx. 3 copias" onBack={onBack} />
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 py-8 grid lg:grid-cols-[1fr_21rem] gap-6 items-start">
+        {/* colección disponible */}
+        <div className="panel-dark p-4">
+          <p className="font-body text-[0.65rem] uppercase tracking-[0.2em] text-bone-500 mb-3">Tus cartas — clic para añadir al mazo</p>
+          <div className="grid sm:grid-cols-2 gap-1.5">
+            {owned.map((c) => {
+              const inDeck = countIn(c.id);
+              const atMax = inDeck >= maxCopies(c.id);
+              const full = deck.length >= 20;
+              return (
+                <div key={c.id}
+                  onClick={() => add(c.id)}
+                  className={`group flex items-center gap-2.5 px-2.5 py-1.5 cursor-pointer transition-all border ${inDeck > 0 ? 'bg-ink-700/60' : 'bg-ink-900/40 hover:bg-ink-700/40'} ${full && inDeck === 0 ? 'opacity-50' : ''}`}
+                  style={{ borderColor: inDeck > 0 ? RARITY_COLOR[c.rarity] : 'rgba(168,151,122,0.15)', clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)' }}>
+                  <span className="font-display font-bold text-base w-6 text-center shrink-0" style={{ color: '#6fe8ff' }}>{c.cost}</span>
+                  <span style={{ color: `hsl(${c.hue} 80% 62%)` }}><Sigil icon={c.kind === 'unit' ? c.icon : 'flask'} className="w-5 h-5 shrink-0" /></span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-display text-[0.85rem] leading-tight text-bone-100 truncate group-hover:text-gold-400 transition-colors">{c.name}</span>
+                    <span className="block font-body text-[0.55rem] uppercase tracking-wider" style={{ color: RARITY_COLOR[c.rarity] }}>
+                      {c.rarity}{c.kind === 'unit' ? ` · ${c.atk}/${c.hp}${c.def ? ` +${c.def} def` : ''}` : ''}
+                    </span>
+                  </span>
+                  {inDeck > 0 && (
+                    <button onClick={(e) => { e.stopPropagation(); remove(c.id); }}
+                      className="shrink-0 w-6 h-6 flex items-center justify-center font-display text-lg leading-none text-bone-300 hover:text-blood-400 border border-bone-500/30 hover:border-blood-500/60 transition-colors"
+                      title="Quitar una copia">−</button>
+                  )}
+                  <span className={`shrink-0 font-display text-sm ${atMax ? 'text-bone-500' : 'text-bone-300'}`}>
+                    {inDeck}<span className="text-bone-500 text-[0.6rem]">/{Math.min(3, meta.collection[c.id] ?? 0)}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* resumen del mazo */}
+        <div className="panel-dark p-5 lg:sticky lg:top-6">
+          <div className="flex items-baseline justify-between">
+            <p className="font-display text-2xl text-bone-100">Mazo</p>
+            <p className={`font-display text-3xl font-bold ${complete ? 'text-venom-400' : 'text-ember-400'}`}>{deck.length}<span className="text-base text-bone-500">/20</span></p>
+          </div>
+          {/* curva de coste */}
+          <div className="mt-3 flex items-end gap-1.5 h-16">
+            {curve.buckets.map((n, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full flex items-end justify-center" style={{ height: '3rem' }}>
+                  <div className="w-full transition-all duration-300" style={{
+                    height: `${(n / curve.max) * 100}%`, minHeight: n > 0 ? '5px' : '2px',
+                    background: n > 0 ? `linear-gradient(180deg, hsl(${40 - i * 6} 80% 55%), hsl(${20 - i * 4} 70% 35%))` : 'rgba(168,151,122,0.15)',
+                  }} />
+                </div>
+                <span className="font-body text-[0.6rem] text-bone-500">{i === 6 ? '7+' : i + 1}</span>
+              </div>
+            ))}
+          </div>
+          {/* lista */}
+          <div className="mt-3 max-h-64 overflow-y-auto pr-1 space-y-0.5">
+            {deckList.length === 0 && <p className="font-body text-xs italic text-bone-500 py-4 text-center">El mazo está vacío. Añade cartas de tu colección.</p>}
+            {deckList.map(([id, n]) => {
+              const c = cardById(id);
+              return (
+                <button key={id} onClick={() => remove(id)} title="Quitar una copia"
+                  className="w-full flex items-center gap-2 px-2 py-1 text-left hover:bg-ink-700/50 transition-colors group">
+                  <span className="font-display text-sm w-5 text-frost-400">{c.cost}</span>
+                  <span className="flex-1 font-body text-xs text-bone-300 group-hover:text-bone-100 truncate">{c.name}</span>
+                  <span className="font-display text-sm text-gold-400">×{n}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button onClick={auto} className="btn-rune px-3 py-2 text-base text-bone-100 bg-ink-700 border border-bone-500/30">Al azar</button>
+            <button onClick={() => { setDeck([]); sfx.click(); }} className="btn-rune px-3 py-2 text-base text-bone-300 bg-ink-700 border border-bone-500/30">Vaciar</button>
+          </div>
+          <button onClick={save} disabled={!complete}
+            className="btn-rune mt-2 w-full px-4 py-2.5 text-xl font-bold text-bone-100"
+            style={{ background: complete ? 'linear-gradient(160deg, #8e1526, #5c0d18)' : '#1e1729', border: '1px solid rgba(255,77,94,0.5)', boxShadow: complete ? '0 0 18px rgba(224,47,69,0.35)' : 'none' }}>
+            {complete ? 'Guardar mazo' : `Faltan ${20 - deck.length} cartas`}
+          </button>
+          {meta.deck.length === 20 && !toast && (
+            <p className="mt-2 font-body text-[0.62rem] uppercase tracking-widest text-venom-400 text-center">Mazo personalizado activo</p>
+          )}
+        </div>
+      </div>
+      {toast && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 panel-dark px-6 py-3 anim-zoom-in">
+          <p className="font-display text-xl text-gold-400 text-glow-gold">Mazo guardado — a la batalla</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -44,6 +44,10 @@ export interface CardDef {
   quote?: string;    // frase de ambientación
   vamp?: boolean;    // vampirismo
   ranged?: boolean;  // a distancia: puede atacar al héroe con el tablero lleno
+  taunt?: boolean;   // provocación: deben atacarla primero
+  pierce?: boolean;  // perforación: ignora la armadura
+  swift?: boolean;   // veloz: ataca la ronda que se despliega
+  thorns?: number;   // espinas: daño al ser atacada
   onPlay?: OnPlay;
   spell?: SpellEffect;
   tags: string[];    // facción: humanos, elfos, lobos...
@@ -62,6 +66,11 @@ export interface UnitInst {
   poison: number;    // daño de veneno por ronda
   poisonT: number;   // rondas restantes de veneno
   vamp: boolean;
+  ranged: boolean;
+  taunt: boolean;
+  pierce: boolean;
+  swift: boolean;
+  thorns: number;
   ready: boolean;    // puede atacar esta fase
   fresh: boolean;    // desplegada esta ronda: no ataca
 }
@@ -140,6 +149,7 @@ export interface AiAttack {
 export interface MetaState {
   gold: number;
   collection: Record<string, number>;
+  deck: string[];        // mazo personalizado (20 ids) o vacío = automático
   storyUnlocked: number;   // nivel máximo desbloqueado (1..8)
   storyCleared: number[];  // niveles completados
   survivalBest: number;

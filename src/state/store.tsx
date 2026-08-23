@@ -8,6 +8,7 @@ const KEY = 'hierro-ceniza-save-v1';
 const defaultState = (): MetaState => ({
   gold: 150,
   collection: { ...STARTER_COLLECTION },
+  deck: [],
   storyUnlocked: 1,
   storyCleared: [],
   survivalBest: 0,
@@ -35,6 +36,7 @@ type Action =
   | { type: 'storyClear'; level: number }
   | { type: 'survival'; streak: number }
   | { type: 'vsWin' }
+  | { type: 'setDeck'; deck: string[] }
   | { type: 'toggleMute' }
   | { type: 'reset' };
 
@@ -62,6 +64,8 @@ function reducer(s: MetaState, a: Action): MetaState {
       return { ...s, survivalBest: Math.max(s.survivalBest, a.streak) };
     case 'vsWin':
       return { ...s, vsWins: s.vsWins + 1 };
+    case 'setDeck':
+      return { ...s, deck: a.deck };
     case 'toggleMute':
       return { ...s, muted: !s.muted };
     case 'reset':

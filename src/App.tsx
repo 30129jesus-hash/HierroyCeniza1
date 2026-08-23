@@ -3,7 +3,7 @@ import { MetaProvider, useMeta } from './state/store';
 import type { BattleConfig, Side } from './game/types';
 import { ALL_CARDS, STARTER_COLLECTION, STORY_LEVELS, cardById, survivalDeck, vsDeck } from './game/cards';
 import BattleScreen from './components/BattleScreen';
-import { CollectionScreen, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
+import { CollectionScreen, DeckScreen, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
 import { Sigil } from './components/icons';
 import { sfx } from './game/audio';
 
@@ -12,6 +12,7 @@ type Screen =
   | { name: 'story' }
   | { name: 'survival' }
   | { name: 'versus' }
+  | { name: 'arsenal' }
   | { name: 'shop' }
   | { name: 'collection' }
   | { name: 'battle' };
@@ -36,7 +37,19 @@ function buildBattleDeck(poolIds: string[]): import('./game/types').CardDef[] {
   return deck.slice(0, 20);
 }
 
-function playerBattleDeck(collection: Record<string, number>): import('./game/types').CardDef[] {
+function shuffleDefs(deck: import('./game/types').CardDef[]): import('./game/types').CardDef[] {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
+function playerBattleDeck(collection: Record<string, number>, saved: string[] = []): import('./game/types').CardDef[] {
+  if (saved.length === 20 && saved.every((id) => ALL_CARDS[id])) {
+    const deck = shuffleDefs(saved.map(cardById));
+    return deck;
+  }
   const pool: import('./game/types').CardDef[] = [];
   Object.entries(collection).forEach(([id, n]) => {
     const def = ALL_CARDS[id];
@@ -68,7 +81,7 @@ function Inner() {
       enemyHeroName: lv.hero,
       enemyIcon: lv.heroIcon,
       enemyHue: lv.hue,
-      playerDeck: playerBattleDeck(meta.collection),
+      playerDeck: playerBattleDeck(meta.collection, meta.deck),
       enemyDeck: buildBattleDeck(lv.deck),
       heroHp: 25, maxRounds: 20,
       enemyStatBonus: lv.bonus, enemyEnergyBonus: 0,
@@ -85,7 +98,7 @@ function Inner() {
       enemyHeroName: curStreak >= 8 ? 'La Horda Eterna' : `Señor de la Horda ${curStreak + 1}`,
       enemyIcon: 'skull',
       enemyHue: 0,
-      playerDeck: playerBattleDeck(meta.collection),
+      playerDeck: playerBattleDeck(meta.collection, meta.deck),
       enemyDeck: buildBattleDeck(survivalDeck(curStreak + 1)),
       heroHp: 25 + Math.min(curStreak * 2, 10), maxRounds: 20,
       enemyStatBonus: Math.min(curStreak, 6), enemyEnergyBonus: curStreak >= 3 ? 1 : 0,
@@ -106,7 +119,7 @@ function Inner() {
       enemyHeroName: names[diff],
       enemyIcon: icons[diff],
       enemyHue: hues[diff],
-      playerDeck: playerBattleDeck(meta.collection),
+      playerDeck: playerBattleDeck(meta.collection, meta.deck),
       enemyDeck: buildBattleDeck(v.deck),
       heroHp: 25, maxRounds: 20,
       enemyStatBonus: v.bonus, enemyEnergyBonus: v.energy,
@@ -211,6 +224,7 @@ function Inner() {
       {screen.name === 'story' && <StoryScreen onBack={() => setScreen({ name: 'title' })} onPlay={startStory} />}
       {screen.name === 'survival' && <SurvivalScreen onBack={() => setScreen({ name: 'title' })} onPlay={() => startSurvival(0)} best={meta.survivalBest} />}
       {screen.name === 'versus' && <VersusScreen onBack={() => setScreen({ name: 'title' })} onPlay={startVersus} />}
+      {screen.name === 'arsenal' && <DeckScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'shop' && <ShopScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'collection' && <CollectionScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'battle' && battleCtx && (

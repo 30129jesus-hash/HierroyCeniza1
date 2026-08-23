@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BattleConfig, BattleEvent, BattleState, Side, Target, UnitInst } from '../game/types';
 import {
   aiAttackPlan, aiPlan, attackTargets, canAfford, canAttackSide, createBattle, endAttackPlayer,
-  endDeployEnemy, endDeployPlayer, endRound, performAttack, playCard, readyCount,
+  endDeployEnemy, endDeployPlayer, endRound, foeHasTaunt, performAttack, playCard, readyCount,
   slotOf, validTargets,
 } from '../game/engine';
 import { RARITY_COLOR } from '../game/cards';
@@ -260,7 +260,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     const u = state.units[lane];
     if (!u) return;
     if (selAttacker === lane) { setSelAttacker(null); sfx.click(); return; }
-    if (u.fresh) { sfx.error(); spawnFx(anchor('player', lane), 'txt', 'AÚN NO', '#6fe8ff'); return; }
+    if (u.fresh && !u.swift) { sfx.error(); spawnFx(anchor('player', lane), 'txt', 'AÚN NO', '#6fe8ff'); return; }
     if (u.frozen > 0) { sfx.error(); spawnFx(anchor('player', lane), 'txt', 'CONGELADA', '#6fe8ff'); return; }
     if (!u.ready) { sfx.error(); spawnFx(anchor('player', lane), 'txt', 'AGOTADA', '#a8977a'); return; }
     sfx.click();
@@ -313,7 +313,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     const spellTargetable = isTarget(t);
     const atkTargetable = side === 'enemy' && isAtkTarget(t);
     const ownClickable = side === 'player' && isAttackPhase && !!u;
-    const ready = !!u && u.ready && !u.fresh && u.frozen <= 0;
+    const ready = !!u && u.ready && (!u.fresh || u.swift) && u.frozen <= 0;
     const lunge = lungeFor(side, lane);
     return (
       <div
@@ -327,7 +327,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
         style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}
       >
         {u ? (
-          <div className={`absolute inset-0 ${side === 'player' && state.phase === 'attackPlayer' && !u.ready && !u.fresh ? 'opacity-60 saturate-50' : ''} ${u.fresh ? 'saturate-[0.75]' : ''}`} style={{
+          <div className={`absolute inset-0 ${side === 'player' && state.phase === 'attackPlayer' && !u.ready && (!u.fresh || u.swift) ? 'opacity-60 saturate-50' : ''} ${u.fresh && !u.swift ? 'saturate-[0.75]' : ''}`} style={{
             background: `linear-gradient(170deg, hsl(${u.def.hue} 30% 17%) 0%, #0d0a12 80%)`,
             border: `1.5px solid ${selAttacker === lane && side === 'player' ? '#ffd76a'
               : atkTargetable ? '#ff8c3b'
@@ -356,10 +356,17 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
               {u.frozen > 0 && <span className="text-frost-400" title="Congelado"><Sigil icon="ice" className="w-3.5 h-3.5" /></span>}
               {u.poison > 0 && <span className="text-venom-400" title={`Veneno ${u.poison} (${u.poisonT})`}><Sigil icon="skull" className="w-3.5 h-3.5" /></span>}
               {u.vamp && <span className="text-blood-400" title="Vampirismo"><Sigil icon="bat" className="w-3.5 h-3.5" /></span>}
-              {u.def.ranged && <span className="text-gold-400" title="A distancia: puede atacar al héroe"><Sigil icon="bow" className="w-3.5 h-3.5" /></span>}
+              {u.ranged && <span className="text-gold-400" title="A distancia: puede atacar al héroe"><Sigil icon="bow" className="w-3.5 h-3.5" /></span>}
+              {u.taunt && <span className="text-frost-400" title="Provocación: deben atacarla primero"><Sigil icon="shield" className="w-3.5 h-3.5" /></span>}
+              {u.pierce && <span className="text-ember-400" title="Perforación: ignora la armadura"><Sigil icon="dagger" className="w-3.5 h-3.5" /></span>}
+              {u.swift && <span className="text-gold-400" title="Veloz: ataca al desplegarse"><Sigil icon="up" className="w-3.5 h-3.5" /></span>}
+              {u.thorns > 0 && <span className="text-venom-400" title={`Espinas ${u.thorns}`}><Sigil icon="claw" className="w-3.5 h-3.5" /></span>}
             </div>
-            {side === 'player' && u.fresh && (
+            {side === 'player' && u.fresh && !u.swift && (
               <div className="absolute top-1 left-1 px-1 py-px bg-frost-400/15 border border-frost-400/50 font-body text-[0.5rem] uppercase tracking-wider text-frost-400">Nueva</div>
+            )}
+            {u.fresh && u.swift && (
+              <div className="absolute top-1 left-1 px-1 py-px bg-gold-400/15 border border-gold-400/50 font-body text-[0.5rem] uppercase tracking-wider text-gold-400">Veloz</div>
             )}
             {side === 'player' && !u.fresh && !u.ready && state.phase === 'attackPlayer' && u.frozen <= 0 && (
               <div className="absolute top-1 left-1 px-1 py-px bg-ink-950/70 border border-bone-500/40 font-body text-[0.5rem] uppercase tracking-wider text-bone-500">Agotada</div>
@@ -432,7 +439,9 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
         )}
         {heroBlocked && (
           <div className="absolute -bottom-2 inset-x-0 text-center pointer-events-none">
-            <span className="font-body text-[0.55rem] uppercase tracking-widest text-bone-300 bg-ink-950/90 border border-bone-500/30 px-1.5 py-px">Solo a distancia</span>
+            <span className="font-body text-[0.55rem] uppercase tracking-widest text-bone-300 bg-ink-950/90 border border-bone-500/30 px-1.5 py-px">
+              {foeHasTaunt(state, 'player') ? 'Provocación activa' : 'Solo a distancia'}
+            </span>
           </div>
         )}
         {(spellTargetable || heroReachable) && <div className="absolute inset-0 anim-target pointer-events-none" style={{ border: '1.5px solid #ff8c3b' }} />}
@@ -618,7 +627,8 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
               <li><b className="text-frost-400">Cada ronda tiene dos fases.</b> Primero el <b>despliegue</b>: juegas cartas con tu energía, luego el enemigo juega las suyas. Después llega la <b>fase de ataque</b>.</li>
               <li><b className="text-gold-400">Ataques a tu elección:</b> clica uno de tus guerreros listos (borde dorado) y luego la presa. Cada guerrero ataca una vez por ronda.</li>
               <li><b className="text-ember-400">A distancia (arco dorado):</b> solo las unidades a distancia pueden atacar al héroe enemigo mientras queden unidades rivales en pie. Las demás deben limpiar el tablero primero.</li>
-              <li><b className="text-frost-400">Defensa = armadura:</b> absorbe el daño de los ataques hasta agotarse; el daño sobrante pasa a la Vida (4 de daño contra 2 de defensa = defensa rota y 2 de vida perdidos). Los hechizos y el veneno la ignoran.</li>
+              <li><b className="text-frost-400">Defensa = armadura:</b> absorbe el daño de los ataques hasta agotarse; el daño sobrante pasa a la Vida. Los hechizos y el veneno la ignoran.</li>
+              <li><b className="text-ember-400">Habilidades:</b> <b>Provocación</b> (escudo azul) obliga a atacarla primero; <b>Perforación</b> (daga) ignora la armadura; <b>Veloz</b> (flecha) ataca la ronda en que se despliega; <b>Espinas</b> (garra) hiere a quien la ataque.</li>
               <li><b className="text-blood-400">Contraataque:</b> si atacas a una unidad, ambos se hieren a la vez. Contra el héroe no hay contraataque.</li>
               <li><b className="text-frost-400">Recién desplegadas:</b> las unidades marcadas como «Nueva» no pueden atacar hasta la siguiente ronda. Las congeladas tampoco atacan.</li>
               <li><b className="text-venom-400">Ítems y mejoras:</b> pociones de fuego, hielo o veneno dañan; las de vida curan; las piedras y gritos mejoran ATK, Defensa o Vida.</li>

@@ -26,11 +26,11 @@ export const PLAYER_CARDS: CardDef[] = [
   u('p_cazadora', 'Cazadora de Bestias', 'player', 2, 3, 2, 'común', 'bow', 96,
     ['humanos'], 'Rastrea a la presa hasta el último latido.', '«Si sangra, puede morir.»', { ranged: true }),
   u('p_soldado', 'Soldado del Alba', 'player', 2, 2, 4, 'común', 'shield', 210,
-    ['humanos'], 'Muro de hierro entre el reino y la noche.', '«Ni un paso atrás.»'),
+    ['humanos'], 'Provocación: los enemigos deben atacarlo primero.', '«Ni un paso atrás.»', { taunt: true }),
   u('p_caballero', 'Caballero de Hierro', 'player', 3, 3, 4, 'rara', 'helm', 220,
-    ['humanos'], 'Su armadura guarda las marcas de cien batallas.', undefined, { def: 1 }),
+    ['humanos'], 'Provocación: deben atacarlo primero. Cien batallas en su armadura.', undefined, { def: 1, taunt: true }),
   u('p_verdugo', 'Verdugo Real', 'player', 5, 6, 4, 'rara', 'axe', 0,
-    ['humanos'], 'El hacha no pregunta; el verdugo tampoco.', '«Que hable el filo.»'),
+    ['humanos'], 'Perforación: sus golpes ignoran la armadura.', '«Que hable el filo.»', { pierce: true }),
   u('p_capitana', 'Capitana Valeria', 'player', 4, 4, 3, 'épica', 'banner', 46,
     ['humanos'], 'Grito de batalla: tus otras unidades ganan +1 de ATK.', '«¡Conmigo, al alba!»',
     { onPlay: { kind: 'buffOtherAtk', amount: 1 } }),
@@ -55,7 +55,7 @@ export const PLAYER_CARDS: CardDef[] = [
   u('p_cuerno', 'Semihumano Astado', 'player', 3, 4, 3, 'común', 'horn', 24,
     ['semihumanos'], 'Embiste primero, piensa después.', '«Mis cuernos no perdonan.»'),
   u('p_licia', 'Licia Colmillo Veloz', 'player', 3, 4, 2, 'rara', 'fang', 340,
-    ['semihumanos'], 'Medio loba, toda tormenta.', '«La manada me enseñó a morder.»'),
+    ['semihumanos'], 'Veloz: ataca la misma ronda en que se despliega.', '«La manada me enseñó a morder.»', { swift: true }),
 
   // ---- Enanos ----
   u('p_minero', 'Minero Rúnico', 'player', 2, 2, 3, 'común', 'gem', 190,
@@ -64,7 +64,7 @@ export const PLAYER_CARDS: CardDef[] = [
     ['enanos'], 'Grito de batalla: tus otras unidades ganan +1 de Defensa.', '«El yunque no miente.»',
     { onPlay: { kind: 'buffAllDef', amount: 1 } }),
   u('p_rompecraneos', 'Rompecráneos', 'player', 4, 3, 6, 'épica', 'hammer', 12,
-    ['enanos'], 'Su martillo fue forjado con campanas fundidas.', undefined, { def: 2 }),
+    ['enanos'], 'Espinas 1: quien lo ataque sufre 1 de daño. Forjado con campanas fundidas.', undefined, { def: 2, thorns: 1 }),
 
   // ---- Hechizos: pociones e ítems ----
   s('p_fuego1', 'Poción de Fuego', 'player', 1, 'común', 'flask', 18,
@@ -111,7 +111,7 @@ export const ENEMY_CARDS: CardDef[] = [
   u('e_bandido1', 'Bandido Novato', 'enemy', 1, 2, 1, 'común', 'dagger', 40, ['bandidos'], 'Un cuchillo oxidado y nada que perder.'),
   u('e_bandido2', 'Emboscador del Camino', 'enemy', 2, 3, 2, 'común', 'dagger', 55, ['bandidos'], 'Ataca donde el bosque es más oscuro.'),
   u('e_jefe', 'Jefe Bandido Garfio', 'enemy', 4, 5, 3, 'rara', 'skull', 48, ['bandidos'], 'Cada cicatriz, un peaje cobrado.'),
-  u('e_desertor', 'Desertor del Reino', 'enemy', 2, 2, 3, 'común', 'bannerBroken', 220, ['desertores'], 'Cambió el juramento por la supervivencia.'),
+  u('e_desertor', 'Desertor del Reino', 'enemy', 2, 2, 3, 'común', 'bannerBroken', 220, ['desertores'], 'Provocación: debes atacarlo primero. Cambió el juramento por sobrevivir.', undefined, { taunt: true }),
   u('e_traidor', 'Traidor Juramentado', 'enemy', 4, 4, 4, 'rara', 'bannerBroken', 250, ['desertores'], 'Conoce las formaciones del alba mejor que nadie.'),
 
   // ---- Lobos y bestias ----
@@ -120,15 +120,15 @@ export const ENEMY_CARDS: CardDef[] = [
   u('e_lobog', 'Lobo Gigante', 'enemy', 5, 6, 5, 'épica', 'wolf', 200, ['lobos'], 'Sus aullidos apagan las hogueras.'),
   u('e_bestia', 'Hombre Bestia', 'enemy', 3, 4, 4, 'común', 'claw', 30, ['bestias'], 'Mitad hombre, todo garra.'),
   u('e_bruto', 'Bruto Bestial', 'enemy', 5, 6, 4, 'rara', 'claw', 15, ['bestias'], 'Rompe escudos con los nudillos.'),
-  u('e_lican', 'Licántropo de la Luna Roja', 'enemy', 4, 5, 3, 'épica', 'moonFang', 265, ['hombreslobo'], 'Vampirismo: el daño que inflige lo cura.', undefined, { vamp: true }),
+  u('e_lican', 'Licántropo de la Luna Roja', 'enemy', 4, 5, 3, 'épica', 'moonFang', 265, ['hombreslobo'], 'Veloz y vampirismo: ataca al desplegarse y drena vida.', undefined, { vamp: true, swift: true }),
 
   // ---- Elfos oscuros ----
   u('e_elfaoscura', 'Elfa Oscura', 'enemy', 3, 3, 3, 'común', 'moon', 280, ['elfososcuros'], 'Grito de batalla: 2 de daño a una unidad tuya al azar.', undefined, { onPlay: { kind: 'damageRandom', amount: 2 } }),
-  u('e_asesina', 'Asesina Umbría', 'enemy', 4, 4, 2, 'rara', 'dagger', 290, ['elfososcuros'], 'Grito de batalla: congela 1 ronda a tu unidad con más ATK.', undefined, { onPlay: { kind: 'freezeRandom', amount: 1 } }),
+  u('e_asesina', 'Asesina Umbría', 'enemy', 4, 4, 2, 'rara', 'dagger', 290, ['elfososcuros'], 'Perforación: ignora la armadura. Grito: congela 1 ronda a tu unidad con más ATK.', undefined, { onPlay: { kind: 'freezeRandom', amount: 1 }, pierce: true }),
 
   // ---- Gigantes ----
-  u('e_gigante', 'Gigante de Piedra', 'enemy', 6, 5, 8, 'épica', 'fist', 30, ['gigantes'], 'La montaña aprendió a caminar.', undefined, { def: 2 }),
-  u('e_giganteA', 'Gigante Ancestral', 'enemy', 7, 7, 9, 'legendaria', 'fist', 20, ['gigantes'], 'Los reinos caen como hojas.', undefined, { def: 2 }),
+  u('e_gigante', 'Gigante de Piedra', 'enemy', 6, 5, 8, 'épica', 'fist', 30, ['gigantes'], 'Provocación: debes atacarlo primero. La montaña aprendió a caminar.', undefined, { def: 2, taunt: true }),
+  u('e_giganteA', 'Gigante Ancestral', 'enemy', 7, 7, 9, 'legendaria', 'fist', 20, ['gigantes'], 'Espinas 1 y armadura. Los reinos caen como hojas.', undefined, { def: 2, thorns: 1 }),
 
   // ---- Serpientes (cuerpo a cuerpo: muerden y tragan) ----
   u('e_serp1', 'Serpiente Pequeña', 'enemy', 1, 1, 1, 'común', 'snake', 110, ['serpientes'], 'Rápida como un latigazo; su mordida adormece.'),
@@ -148,7 +148,7 @@ export const ENEMY_CARDS: CardDef[] = [
   u('e_arqui', 'Archidemonio del Vacío', 'enemy', 7, 7, 7, 'legendaria', 'demon', 300, ['demonios'], 'Grito de batalla: 2 de daño a TODAS tus unidades.', undefined, { onPlay: { kind: 'aoe', amount: 2 }, ranged: true }),
 
   // ---- Aves gigantes ----
-  u('e_ave', 'Ave de Presa Gigante', 'enemy', 4, 4, 4, 'común', 'feather', 45, ['aves'], 'Sus garras parten yelmos como nueces.'),
+  u('e_ave', 'Ave de Presa Gigante', 'enemy', 4, 4, 4, 'común', 'feather', 45, ['aves'], 'Veloz: cae en picado la misma ronda en que llega.', undefined, { swift: true }),
   u('e_roc', 'Roc Sombrío', 'enemy', 6, 6, 5, 'épica', 'feather', 270, ['aves'], 'Su sombra anuncia la tormenta.'),
 
   // ---- Dragón ----
