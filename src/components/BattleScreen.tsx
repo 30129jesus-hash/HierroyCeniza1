@@ -25,7 +25,10 @@ export interface BattleStats {
   rounds: number;
   dragonKills: number;
   heroDamageTaken: number;
+  heroDamageDealt: number;
   heroHpLeft: number;
+  maxCostPlayed: number;
+  spellsPlayed: number;
 }
 
 interface Props {
@@ -43,7 +46,10 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     rounds: stateRef.current.round,
     dragonKills: stateRef.current.dragonKills,
     heroDamageTaken: stateRef.current.heroDamageTaken,
+    heroDamageDealt: stateRef.current.heroDamageDealt,
     heroHpLeft: stateRef.current.heroHp.player,
+    maxCostPlayed: stateRef.current.maxCostPlayed,
+    spellsPlayed: stateRef.current.spellsPlayed,
   });
 
   const { meta, dispatch } = useMeta();

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MetaProvider, useMeta } from './state/store';
 import type { BattleConfig, MetaState, Side } from './game/types';
 import { ALL_CARDS, RELICS, STARTER_COLLECTION, STORY_LEVELS, achById, cardById, pactById, randomRelicOptions, survivalDeck, vsDeck } from './game/cards';
-import { resolveChallenges, challengeById } from './game/challenges';
+import { resolveChallenges, challengeById, type BattleOutcome } from './game/challenges';
 import BattleScreen, { type BattleStats } from './components/BattleScreen';
 import { AchievementsScreen, ChallengesScreen, CollectionScreen, DeckScreen, RelicPicker, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
 import { Sigil } from './components/icons';
@@ -171,6 +171,7 @@ function Inner() {
   };
 
   const [achToast, setAchToast] = useState<{ id: string; at: number }[]>([]);
+  const [chToast, setChToast] = useState<{ id: string; at: number }[]>([]);
 
   const grantAch = (proj: ProjectedMeta, stats: BattleStats, won: boolean) => {
     const earned = achievementsEarned(meta, proj, stats, won);
@@ -189,6 +190,31 @@ function Inner() {
     const { mode, param } = battleCtx;
 
     if (stats.dragonKills > 0) dispatch({ type: 'dragonKills', n: stats.dragonKills });
+
+    // desafíos diarios / semanales
+    const outcome: BattleOutcome = {
+      mode,
+      won: won && !conceded,
+      conceded,
+      diff: param,
+      newStreak: mode === 'supervivencia' ? (won && !conceded ? streak + 1 : streak) : 0,
+      kills: stats.kills,
+      dragonKills: stats.dragonKills,
+      heroDamageTaken: stats.heroDamageTaken,
+      heroDamageDealt: stats.heroDamageDealt,
+      maxCostPlayed: stats.maxCostPlayed,
+      spellsPlayed: stats.spellsPlayed,
+    };
+    const chRes = resolveChallenges(meta, outcome);
+    if (chRes.claimedIds.length > 0 || Object.keys(chRes.counters).length > 0) {
+      dispatch({ type: 'challengesResolve', claimedIds: chRes.claimedIds, gold: chRes.gold, counters: chRes.counters });
+    }
+    if (chRes.claimedIds.length > 0) {
+      setChToast((t) => [...t, ...chRes.claimedIds.map((id, i) => ({ id, at: Date.now() + i }))]);
+      chRes.claimedIds.forEach((_, i) => {
+        setTimeout(() => setChToast((t) => t.slice(1)), 3600 * (i + 1));
+      });
+    }
 
     const baseProj = (): ProjectedMeta => ({
       gold: meta.gold,
@@ -309,6 +335,7 @@ function Inner() {
       {screen.name === 'versus' && <VersusScreen onBack={() => setScreen({ name: 'title' })} onPlay={startVersus} />}
       {screen.name === 'arsenal' && <DeckScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'achievements' && <AchievementsScreen onBack={() => setScreen({ name: 'title' })} />}
+      {screen.name === 'challenges' && <ChallengesScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'shop' && <ShopScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'collection' && <CollectionScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'battle' && battleCtx && (
@@ -332,6 +359,24 @@ function Inner() {
               {reward.nextLabel}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* avisos de desafío completado */}
+      {chToast.length > 0 && (
+        <div className="fixed bottom-6 inset-x-0 z-[70] flex flex-col items-center gap-2 pointer-events-none px-4">
+          {chToast.map((t) => {
+            const c = challengeById(t.id);
+            return (
+              <div key={t.at} className="panel-dark px-5 py-3 flex items-center gap-3 anim-slide-down" style={{ borderColor: `hsl(${c.hue} 60% 45% / 0.7)` }}>
+                <span style={{ color: `hsl(${c.hue} 80% 62%)`, filter: `drop-shadow(0 0 8px hsl(${c.hue} 90% 55% / 0.8))` }}><Sigil icon={c.icon} className="w-6 h-6" /></span>
+                <div>
+                  <p className="font-body text-[0.58rem] uppercase tracking-widest text-frost-400">Desafío superado</p>
+                  <p className="font-display text-lg leading-tight" style={{ color: `hsl(${c.hue} 75% 70%)` }}>{c.name} <span className="text-gold-400 text-sm">+{c.reward} oro</span></p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
