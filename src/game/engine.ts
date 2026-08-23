@@ -9,7 +9,9 @@ export const slotOf = (side: Side, lane: number) => (side === 'player' ? lane : 
 export const opp = (side: Side): Side => (side === 'player' ? 'enemy' : 'player');
 
 const energyMax = (s: BattleState, side: Side) =>
-  Math.min(9, s.round + (side === 'enemy' ? s.cfg.enemyEnergyBonus : 0));
+  Math.min(9, s.round + (side === 'enemy'
+    ? s.cfg.enemyEnergyBonus
+    : (s.cfg.relics ?? []).includes('rel_poder') ? 1 : 0));
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -71,6 +73,8 @@ export function createBattle(cfg: BattleConfig): BattleState {
     logSeq: 0,
     uidSeq: 0,
     kills: 0,
+    dragonKills: 0,
+    heroDamageTaken: 0,
   };
   draw(s, 'player', 3);
   draw(s, 'enemy', 3);
@@ -80,13 +84,17 @@ export function createBattle(cfg: BattleConfig): BattleState {
 
 function makeUnit(s: BattleState, def: CardDef, side: Side): UnitInst {
   const bonus = side === 'enemy' ? s.cfg.enemyStatBonus : 0;
+  const relics = s.cfg.relics ?? [];
+  const pAtk = side === 'player' && relics.includes('rel_estandarte') ? 1 : 0;
+  const pHp = side === 'player' && relics.includes('rel_vida') ? 2 : 0;
+  const pDef = side === 'player' && relics.includes('rel_muralla') ? 1 : 0;
   s.uidSeq += 1;
   return {
     uid: s.uidSeq, def,
-    atk: (def.atk ?? 0) + bonus,
-    hp: (def.hp ?? 0) + bonus,
-    maxHp: (def.hp ?? 0) + bonus,
-    defv: def.def ?? 0,
+    atk: (def.atk ?? 0) + bonus + pAtk,
+    hp: (def.hp ?? 0) + bonus + pHp,
+    maxHp: (def.hp ?? 0) + bonus + pHp,
+    defv: (def.def ?? 0) + pDef,
     frozen: 0, poison: 0, poisonT: 0,
     vamp: !!def.vamp,
     ranged: !!def.ranged, taunt: !!def.taunt, pierce: !!def.pierce,
@@ -133,6 +141,7 @@ function killUnit(s: BattleState, side: Side, lane: number, events: BattleEvent[
   events.push({ t: 'death', side, lane });
   if (side === 'enemy') {
     s.kills += 1;
+    if (u.def.id === 'e_dragon') s.dragonKills += 1;
     log(s, `${u.def.name} ha caído.`, 'good');
   } else {
     log(s, `Tu ${u.def.name} ha caído.`, 'bad');
@@ -141,10 +150,17 @@ function killUnit(s: BattleState, side: Side, lane: number, events: BattleEvent[
 
 function damageHero(s: BattleState, side: Side, amount: number, events: BattleEvent[]) {
   if (amount <= 0) return;
-  s.heroHp[side] = Math.max(0, s.heroHp[side] - amount);
-  events.push({ t: 'damageHero', side, amount });
-  if (side === 'player') log(s, `Recibes ${amount} de daño.`, 'bad');
-  else log(s, `Infliges ${amount} de daño al héroe enemigo.`, 'good');
+  let dmg = amount;
+  if (side === 'player' && (s.cfg.relics ?? []).includes('rel_amuleto')) {
+    dmg = Math.max(1, amount - 1);
+    if (dmg < amount) log(s, `El Amuleto Rúnico absorbe 1 de daño.`, 'info');
+  }
+  s.heroHp[side] = Math.max(0, s.heroHp[side] - dmg);
+  events.push({ t: 'damageHero', side, amount: dmg });
+  if (side === 'player') {
+    s.heroDamageTaken += dmg;
+    log(s, `Recibes ${dmg} de daño.`, 'bad');
+  } else log(s, `Infliges ${dmg} de daño al héroe enemigo.`, 'good');
   checkWin(s, events);
 }
 
@@ -703,8 +719,16 @@ export function endRound(prev: BattleState): PlayResult {
     return { state: s, events };
   }
 
+  // reliquias de fin de ronda
+  const relics = s.cfg.relics ?? [];
+  if (relics.includes('rel_fuente')) {
+    log(s, `La Fuente Sanadora vierte su agua (2 de vida).`, 'info');
+    healHero(s, 'player', 2, events);
+  }
+
   draw(s, 'player', 1);
   draw(s, 'enemy', 1);
+  if (relics.includes('rel_sabiduria')) draw(s, 'player', 1);
   events.push({ t: 'draw', side: 'player' });
 
   s.phase = 'deployPlayer';

@@ -92,6 +92,7 @@ export interface BattleConfig {
   maxRounds: number;
   enemyStatBonus: number;  // +X/+X a unidades enemigas
   enemyEnergyBonus: number;
+  relics?: string[];       // reliquias activas (supervivencia)
 }
 
 export type BattlePhase = 'deployPlayer' | 'deployEnemy' | 'attackPlayer' | 'attackEnemy' | 'done';
@@ -115,6 +116,8 @@ export interface BattleState {
   logSeq: number;
   uidSeq: number;
   kills: number;
+  dragonKills: number;     // dragones abatidos (para logros)
+  heroDamageTaken: number; // daño recibido por tu héroe (para logros)
 }
 
 export type BattleEvent =
@@ -157,5 +160,25 @@ export interface MetaState {
   vsWins: number;
   totalWins: number;
   totalLosses: number;
+  achievements: string[];  // ids de logros desbloqueados
+  dragonsSlain: number;    // dragones abatidos acumulados
   muted: boolean;
+  musicOn: boolean;
+}
+
+export interface RelicDef {
+  id: string;
+  name: string;
+  desc: string;
+  icon: string;
+  hue: number;
+}
+
+export interface AchDef {
+  id: string;
+  name: string;
+  desc: string;
+  icon: string;
+  hue: number;
+  reward: number;
 }

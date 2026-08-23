@@ -7,6 +7,8 @@ import {
 } from '../game/engine';
 import { RARITY_COLOR } from '../game/cards';
 import { sfx } from '../game/audio';
+import { music } from '../game/music';
+import { useMeta } from '../state/store';
 import CardView from './CardView';
 import { Sigil, RuneRing } from './icons';
 
@@ -18,15 +20,33 @@ const anchor = (side: Side, lane: number) => `${side[0]}${lane}`;
 
 const DMG_COLOR: Record<string, string> = { hit: '#ff4d5e', fire: '#ff8c3b', ice: '#6fe8ff', poison: '#9dff57' };
 
+export interface BattleStats {
+  kills: number;
+  rounds: number;
+  dragonKills: number;
+  heroDamageTaken: number;
+  heroHpLeft: number;
+}
+
 interface Props {
   cfg: BattleConfig;
-  onEnd: (won: boolean, stats: { kills: number; rounds: number }, conceded: boolean) => void;
+  onEnd: (won: boolean, stats: BattleStats, conceded: boolean) => void;
 }
 
 export default function BattleScreen({ cfg, onEnd }: Props) {
   const [state, setStateRaw] = useState<BattleState>(() => createBattle(cfg));
   const stateRef = useRef(state);
   const commit = (s: BattleState) => { stateRef.current = s; setStateRaw(s); };
+
+  const buildStats = (): BattleStats => ({
+    kills: stateRef.current.kills,
+    rounds: stateRef.current.round,
+    dragonKills: stateRef.current.dragonKills,
+    heroDamageTaken: stateRef.current.heroDamageTaken,
+    heroHpLeft: stateRef.current.heroHp.player,
+  });
+
+  const { meta, dispatch } = useMeta();
 
   const [busy, setBusy] = useState(false);
   const [sel, setSel] = useState<number | null>(null);
@@ -51,6 +71,15 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // música ambiental de batalla
+  useEffect(() => {
+    music.start();
+    return () => { music.stop(); };
+  }, []);
+  useEffect(() => {
+    music.setTense(state.phase === 'attackEnemy' || state.heroHp.player <= 8);
+  }, [state.phase, state.heroHp.player]);
 
   const later = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -484,9 +513,15 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
       {/* barra superior */}
       <div className="relative z-10 flex items-center justify-between px-3 sm:px-5 py-2 border-b border-bone-500/15 bg-ink-950/70 backdrop-blur-sm">
         <div className="flex items-center gap-2 sm:gap-3">
-          <button onClick={() => { sfx.click(); onEnd(false, { kills: state.kills, rounds: state.round }, true); }}
+          <button onClick={() => { sfx.click(); onEnd(false, buildStats(), true); }}
             className="btn-rune px-2.5 py-1 text-sm bg-ink-700 text-bone-300 border border-bone-500/25 flex items-center gap-1">
             <Sigil icon="back" className="w-3.5 h-3.5" /> Rendirse
+          </button>
+          <button onClick={() => { sfx.click(); dispatch({ type: 'toggleMusic' }); }}
+            title="Música ambiental"
+            className="btn-rune px-2 py-1 bg-ink-700 border border-bone-500/25"
+            style={{ color: meta.musicOn ? '#ffd76a' : '#4a4358' }}>
+            <Sigil icon="wave" className="w-4 h-4" />
           </button>
           <div className="hidden sm:block">
             <p className="font-display text-base sm:text-lg leading-none text-bone-100 text-glow-ember">{cfg.title}</p>
@@ -654,7 +689,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
                   ? 'Las rondas se agotaron y el jefe siguió en pie. Volverás con más acero.'
                   : 'Las cuervas ya bajan al campo. Volverás con más acero.'}
             </p>
-            <button onClick={() => { sfx.click(); onEnd(result === 'victory', { kills: state.kills, rounds: state.round }, false); }}
+            <button onClick={() => { sfx.click(); onEnd(result === 'victory', buildStats(), false); }}
               className="btn-rune mt-6 px-8 py-2.5 text-xl font-bold text-bone-100"
               style={{ background: 'linear-gradient(160deg, #8e1526, #5c0d18)', border: '1px solid rgba(255,77,94,0.5)', boxShadow: '0 0 22px rgba(224,47,69,0.4)' }}>
               Continuar

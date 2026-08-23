@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNo
 import type { MetaState } from '../game/types';
 import { ALL_CARDS, STARTER_COLLECTION } from '../game/cards';
 import { setMuted } from '../game/audio';
+import { music } from '../game/music';
 
 const KEY = 'hierro-ceniza-save-v1';
 
@@ -15,7 +16,10 @@ const defaultState = (): MetaState => ({
   vsWins: 0,
   totalWins: 0,
   totalLosses: 0,
+  achievements: [],
+  dragonsSlain: 0,
   muted: false,
+  musicOn: true,
 });
 
 function load(): MetaState {
@@ -37,7 +41,10 @@ type Action =
   | { type: 'survival'; streak: number }
   | { type: 'vsWin' }
   | { type: 'setDeck'; deck: string[] }
+  | { type: 'unlockAch'; ids: string[]; gold: number }
+  | { type: 'dragonKills'; n: number }
   | { type: 'toggleMute' }
+  | { type: 'toggleMusic' }
   | { type: 'reset' };
 
 function reducer(s: MetaState, a: Action): MetaState {
@@ -66,8 +73,17 @@ function reducer(s: MetaState, a: Action): MetaState {
       return { ...s, vsWins: s.vsWins + 1 };
     case 'setDeck':
       return { ...s, deck: a.deck };
+    case 'unlockAch': {
+      const fresh = a.ids.filter((id) => !s.achievements.includes(id));
+      if (fresh.length === 0) return s;
+      return { ...s, achievements: [...s.achievements, ...fresh], gold: s.gold + a.gold };
+    }
+    case 'dragonKills':
+      return { ...s, dragonsSlain: s.dragonsSlain + a.n };
     case 'toggleMute':
       return { ...s, muted: !s.muted };
+    case 'toggleMusic':
+      return { ...s, musicOn: !s.musicOn };
     case 'reset':
       return defaultState();
     default:
@@ -91,6 +107,7 @@ export function MetaProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(KEY, JSON.stringify(meta)); } catch { /* sin almacenamiento */ }
   }, [meta]);
   useEffect(() => { setMuted(meta.muted); }, [meta.muted]);
+  useEffect(() => { music.setEnabled(meta.musicOn && !meta.muted); }, [meta.musicOn, meta.muted]);
 
   const value = useMemo<Ctx>(() => ({
     meta,

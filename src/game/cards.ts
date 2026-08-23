@@ -1,4 +1,4 @@
-import type { CardDef, Rarity } from './types';
+import type { AchDef, CardDef, Rarity, RelicDef } from './types';
 
 const u = (
   id: string, name: string, side: CardDef['side'], cost: number,
@@ -286,3 +286,47 @@ export const PACK_COST = { recluta: 150, guerra: 320 } as const;
 export const DUPE_GOLD: Record<Rarity, number> = {
   'común': 15, 'rara': 30, 'épica': 55, 'legendaria': 100,
 };
+
+/* ================= RELIQUIAS (Supervivencia) ================= */
+
+export const RELICS: RelicDef[] = [
+  { id: 'rel_poder', name: 'Ídolo del Poder', desc: '+1 de energía máxima en cada ronda.', icon: 'gem', hue: 48 },
+  { id: 'rel_muralla', name: 'Talismán de la Muralla', desc: 'Tus unidades ganan +1 de Armadura al desplegarse.', icon: 'shield', hue: 210 },
+  { id: 'rel_estandarte', name: 'Estandarte de Guerra', desc: 'Tus unidades ganan +1 de ATK al desplegarse.', icon: 'banner', hue: 16 },
+  { id: 'rel_vida', name: 'Pacto de Sangre', desc: 'Tus unidades ganan +2 de Vida al desplegarse.', icon: 'heart', hue: 345 },
+  { id: 'rel_fuente', name: 'Fuente Sanadora', desc: 'Tu héroe recupera 2 de vida al fin de cada ronda.', icon: 'wave', hue: 175 },
+  { id: 'rel_amuleto', name: 'Amuleto Rúnico', desc: 'Tu héroe recibe 1 menos de daño (mínimo 1).', icon: 'moon', hue: 265 },
+  { id: 'rel_sabiduria', name: 'Ojo del Cuervo', desc: 'Robas 1 carta extra al inicio de cada ronda.', icon: 'feather', hue: 96 },
+  { id: 'rel_bolsa', name: 'Bolsa del Mercenario', desc: '+5 de oro extra por cada victoria.', icon: 'coin', hue: 40 },
+];
+
+export const relicById = (id: string): RelicDef => RELICS.find((r) => r.id === id)!;
+
+export const RELIC_LOOKUP: Record<string, RelicDef> = Object.fromEntries(RELICS.map((r) => [r.id, r]));
+
+export function randomRelicOptions(exclude: string[], n = 3): RelicDef[] {
+  const pool = RELICS.filter((r) => !exclude.includes(r.id));
+  const out: RelicDef[] = [];
+  while (out.length < n && pool.length > 0) {
+    const i = Math.floor(Math.random() * pool.length);
+    out.push(pool.splice(i, 1)[0]);
+  }
+  return out;
+}
+
+/* ================= LOGROS ================= */
+
+export const ACHIEVEMENTS: AchDef[] = [
+  { id: 'ach_primera', name: 'Primera Sangre', desc: 'Gana tu primera batalla.', icon: 'dagger', hue: 0, reward: 30 },
+  { id: 'ach_ileso', name: 'Muralla Intacta', desc: 'Gana una batalla sin que tu héroe reciba daño.', icon: 'shield', hue: 210, reward: 60 },
+  { id: 'ach_sacrificio', name: 'Victoria Pírrica', desc: 'Gana con tu héroe a 5 de vida o menos.', icon: 'heart', hue: 345, reward: 40 },
+  { id: 'ach_nivel4', name: 'Mitad del Abismo', desc: 'Completa el nivel 4 de la campaña.', icon: 'flag', hue: 285, reward: 60 },
+  { id: 'ach_campana', name: 'Salvador del Reino', desc: 'Completa la campaña entera (8 niveles).', icon: 'crown', hue: 48, reward: 200 },
+  { id: 'ach_dragones', name: 'Matadragones', desc: 'Abate 3 dragones (Vharkar cuenta).', icon: 'dragon', hue: 12, reward: 120 },
+  { id: 'ach_racha5', name: 'Cacería sin Fin', desc: 'Gana 5 cacerías seguidas en Supervivencia.', icon: 'infinity', hue: 130, reward: 80 },
+  { id: 'ach_versus', name: 'Duelista de Hojas', desc: 'Gana 5 duelos en Versus.', icon: 'swords', hue: 20, reward: 60 },
+  { id: 'ach_rico', name: 'Cofre de Guerra', desc: 'Acumula 1000 de oro.', icon: 'coin', hue: 40, reward: 50 },
+  { id: 'ach_coleccionista', name: 'Arsenal Completo', desc: 'Reúne 15 cartas únicas distintas.', icon: 'cards', hue: 210, reward: 80 },
+];
+
+export const achById = (id: string): AchDef => ACHIEVEMENTS.find((a) => a.id === id)!;

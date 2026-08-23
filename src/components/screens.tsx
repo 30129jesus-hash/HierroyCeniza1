@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMeta } from '../state/store';
-import { DUPE_GOLD, PACK_COST, PLAYER_CARDS, RARITY_COLOR, SHOP_POOL_COMMON, SHOP_POOL_EPIC, SHOP_POOL_RARE, STORY_LEVELS, cardById } from '../game/cards';
-import type { CardDef } from '../game/types';
+import { ACHIEVEMENTS, DUPE_GOLD, PACK_COST, PLAYER_CARDS, RARITY_COLOR, RELIC_LOOKUP, SHOP_POOL_COMMON, SHOP_POOL_EPIC, SHOP_POOL_RARE, STORY_LEVELS, cardById } from '../game/cards';
+import type { AchDef, CardDef, RelicDef } from '../game/types';
 import { sfx } from '../game/audio';
 import CardView from './CardView';
 import { Sigil, RuneRing } from './icons';
@@ -50,6 +50,7 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
     { id: 'arsenal', label: 'Arsenal', desc: meta.deck.length === 20 ? 'Tu mazo de 20, a tu gusto' : 'Elige tus 20 cartas de guerra', icon: 'helm', hue: 220 },
     { id: 'shop', label: 'Tienda', desc: 'Sobres de recluta y de guerra', icon: 'bag', hue: 130 },
     { id: 'collection', label: 'Colección', desc: `${Object.values(meta.collection).reduce((a, b) => a + b, 0)} cartas reunidas`, icon: 'cards', hue: 210 },
+    { id: 'achievements', label: 'Logros', desc: `${meta.achievements.length} de ${ACHIEVEMENTS.length} hazañas`, icon: 'crown', hue: 48 },
   ];
 
   return (
@@ -180,8 +181,8 @@ export function SurvivalScreen({ onBack, onPlay, best }: { onBack: () => void; o
           </div>
           <h3 className="font-display text-4xl text-bone-100 text-glow-blood">Hasta la última gota</h3>
           <p className="font-body text-bone-300 mt-3 text-sm leading-relaxed">
-            Oleadas infinitas de enemigos cada vez más fuertes. Cada victoria te da oro y tu héroe sana sus heridas;
-            la derrota lo termina todo. ¿Cuántas rondas aguantarás?
+            Oleadas infinitas de enemigos cada vez más fuertes. Antes de cada cacería eliges una <b className="text-gold-400">reliquia</b> pasiva
+            que se acumula; cada victoria da oro y tu héroe sana sus heridas, pero la derrota lo termina todo y las pierde. ¿Cuántas rondas aguantarás?
           </p>
           <div className="mt-5 flex items-center justify-center gap-6">
             <div>
@@ -426,6 +427,102 @@ export function CollectionScreen({ onBack }: { onBack: () => void }) {
                 <p className="text-center mt-1 font-body text-[0.6rem] uppercase tracking-widest" style={{ color: n > 0 ? RARITY_COLOR[c.rarity] : '#4a4358' }}>
                   {n > 0 ? `${c.rarity} ×${n}` : 'Sin conseguir'}
                 </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= SELECTOR DE RELIQUIAS ================= */
+
+export function RelicPicker({ options, held, onPick }: { options: RelicDef[]; held: string[]; onPick: (id: string | null) => void }) {
+  const heldDefs = held.map((id) => RELIC_LOOKUP[id]).filter(Boolean);
+  return (
+    <div className="fixed inset-0 z-[60] bg-ink-950/92 flex items-center justify-center p-4">
+      <div className="max-w-3xl w-full text-center anim-zoom-in">
+        <p className="font-body text-[0.65rem] uppercase tracking-[0.3em] text-blood-400 mb-1">El botín de la cacería</p>
+        <h3 className="font-display text-4xl sm:text-5xl text-gold-400 text-glow-gold">Elige una reliquia</h3>
+        <p className="font-body text-xs text-bone-500 mt-2">Se acumula durante toda la racha de supervivencia.</p>
+
+        {heldDefs.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <span className="font-body text-[0.6rem] uppercase tracking-widest text-bone-500">Portas:</span>
+            {heldDefs.map((r) => (
+              <span key={r.id} className="flex items-center gap-1 px-2 py-0.5 border font-body text-[0.62rem]"
+                style={{ borderColor: `hsl(${r.hue} 60% 45% / 0.6)`, color: `hsl(${r.hue} 75% 65%)` }}>
+                <Sigil icon={r.icon} className="w-3 h-3" />{r.name}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6 grid sm:grid-cols-3 gap-4">
+          {options.map((r, i) => (
+            <button key={r.id} onClick={() => { sfx.epic(); onPick(r.id); }}
+              className="panel-dark p-6 text-left hover:-translate-y-2 transition-transform anim-slide-down group"
+              style={{ animationDelay: `${0.1 + i * 0.09}s`, borderColor: `hsl(${r.hue} 60% 45% / 0.55)` }}>
+              <div className="relative w-14 h-14 mb-3" style={{ color: `hsl(${r.hue} 80% 62%)` }}>
+                <RuneRing className="absolute inset-0 w-full h-full" reverse={i % 2 === 1} />
+                <div className="absolute inset-0 flex items-center justify-center anim-bob" style={{ filter: `drop-shadow(0 0 8px hsl(${r.hue} 90% 55% / 0.8))` }}>
+                  <Sigil icon={r.icon} className="w-6 h-6" />
+                </div>
+              </div>
+              <p className="font-display text-xl leading-tight group-hover:text-gold-400 transition-colors" style={{ color: `hsl(${r.hue} 75% 70%)` }}>{r.name}</p>
+              <p className="font-body text-xs text-bone-300 mt-1.5 leading-snug">{r.desc}</p>
+            </button>
+          ))}
+        </div>
+
+        <button onClick={() => { sfx.click(); onPick(null); }}
+          className="mt-6 font-body text-[0.65rem] uppercase tracking-widest text-bone-500 hover:text-bone-300 transition-colors">
+          Seguir sin reliquia nueva
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ================= LOGROS ================= */
+
+export function AchievementsScreen({ onBack }: { onBack: () => void }) {
+  const { meta } = useMeta();
+  const unlockedCount = meta.achievements.length;
+  return (
+    <div className="bg-arena min-h-screen relative">
+      <div className="bg-vignette absolute inset-0 pointer-events-none" />
+      <Embers n={8} />
+      <Header title="Logros" sub="Hazañas grabadas en hierro" onBack={onBack} />
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-8">
+        <p className="font-body text-[0.68rem] uppercase tracking-widest text-bone-500 mb-6">
+          <b className="text-gold-400">{unlockedCount}</b> de <b className="text-bone-100">{ACHIEVEMENTS.length}</b> hazañas completadas
+        </p>
+        <div className="grid sm:grid-cols-2 gap-4">
+          {ACHIEVEMENTS.map((a: AchDef, i) => {
+            const done = meta.achievements.includes(a.id);
+            return (
+              <div key={a.id} className={`panel-dark p-4 flex items-start gap-4 anim-slide-down ${done ? '' : 'opacity-50 saturate-[0.3]'}`}
+                style={{ animationDelay: `${i * 0.04}s`, borderColor: done ? `hsl(${a.hue} 60% 45% / 0.6)` : undefined }}>
+                <div className="relative w-12 h-12 shrink-0" style={{ color: done ? `hsl(${a.hue} 80% 62%)` : '#4a4358' }}>
+                  <RuneRing className="absolute inset-0 w-full h-full" reverse={i % 2 === 1} />
+                  <div className="absolute inset-0 flex items-center justify-center" style={done ? { filter: `drop-shadow(0 0 8px hsl(${a.hue} 90% 55% / 0.8))` } : undefined}>
+                    <Sigil icon={done ? a.icon : 'lock'} className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-display text-lg leading-tight" style={{ color: done ? `hsl(${a.hue} 75% 70%)` : '#8a7a5f' }}>{a.name}</p>
+                    <span className={`flex items-center gap-1 font-display text-sm ${done ? 'text-gold-400' : 'text-bone-500'}`}>
+                      <Sigil icon="coin" className="w-3.5 h-3.5" />{a.reward}
+                    </span>
+                  </div>
+                  <p className="font-body text-xs text-bone-300/80 mt-0.5 leading-snug">{a.desc}</p>
+                  <p className={`font-body text-[0.58rem] uppercase tracking-widest mt-1.5 ${done ? 'text-gold-400' : 'text-bone-500'}`}>
+                    {done ? 'Completado' : 'Pendiente'}
+                  </p>
+                </div>
               </div>
             );
           })}
