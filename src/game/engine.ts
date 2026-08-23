@@ -40,6 +40,12 @@ function log(s: BattleState, text: string, tone: 'info' | 'good' | 'bad' | 'sys'
 
 function draw(s: BattleState, side: Side, n: number) {
   for (let i = 0; i < n; i++) {
+    if (s.decks[side].length === 0) {
+      // El mazo se agotó: se rearma al azar con las 20 cartas originales
+      if (s.baseDecks[side].length === 0) return;
+      s.decks[side] = shuffle([...s.baseDecks[side]]);
+      log(s, side === 'player' ? 'Tu mazo se rearma al azar desde el pozo de guerra.' : 'El mazo enemigo se rearma.', side === 'player' ? 'sys' : 'bad');
+    }
     if (s.decks[side].length === 0 || s.hands[side].length >= 8) return;
     s.hands[side].push(s.decks[side].shift()!);
   }
@@ -54,6 +60,7 @@ export function createBattle(cfg: BattleConfig): BattleState {
     units: [null, null, null, null, null, null],
     hands: { player: [], enemy: [] },
     decks: { player: shuffle([...cfg.playerDeck]), enemy: shuffle([...cfg.enemyDeck]) },
+    baseDecks: { player: [...cfg.playerDeck], enemy: [...cfg.enemyDeck] },
     energy: {
       player: { cur: 1, max: 1 },
       enemy: { cur: 1 + cfg.enemyEnergyBonus, max: 1 + cfg.enemyEnergyBonus },

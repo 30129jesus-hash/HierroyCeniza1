@@ -107,6 +107,7 @@ export interface BattleState {
   units: (UnitInst | null)[];
   hands: { player: CardDef[]; enemy: CardDef[] };
   decks: { player: CardDef[]; enemy: CardDef[] };
+  baseDecks: { player: CardDef[]; enemy: CardDef[] }; // pozo para rearmar el mazo al agotarse
   energy: { player: { cur: number; max: number }; enemy: { cur: number; max: number } };
   heroHp: { player: number; enemy: number };
   heroMaxHp: { player: number; enemy: number };
