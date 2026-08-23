@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import type { MetaState } from '../game/types';
 import { ALL_CARDS, STARTER_COLLECTION } from '../game/cards';
+import { ensureChallenges } from '../game/challenges';
 import { setMuted } from '../game/audio';
 import { music } from '../game/music';
 
@@ -18,6 +19,10 @@ const defaultState = (): MetaState => ({
   totalLosses: 0,
   achievements: [],
   dragonsSlain: 0,
+  challenges: {
+    daily: { date: '', ids: [], claimed: [] },
+    weekly: { key: '', id: '', claimed: false, counters: {} },
+  },
   muted: false,
   musicOn: true,
 });
@@ -43,6 +48,8 @@ type Action =
   | { type: 'setDeck'; deck: string[] }
   | { type: 'unlockAch'; ids: string[]; gold: number }
   | { type: 'dragonKills'; n: number }
+  | { type: 'challengesTick' }
+  | { type: 'challengesResolve'; claimedIds: string[]; gold: number; counters: Record<string, number> }
   | { type: 'toggleMute' }
   | { type: 'toggleMusic' }
   | { type: 'reset' };
@@ -80,6 +87,28 @@ function reducer(s: MetaState, a: Action): MetaState {
     }
     case 'dragonKills':
       return { ...s, dragonsSlain: s.dragonsSlain + a.n };
+    case 'challengesTick':
+      return ensureChallenges(s);
+    case 'challengesResolve': {
+      if (a.claimedIds.length === 0 && Object.keys(a.counters).length === 0) return s;
+      const ch = s.challenges;
+      const dailyClaimed = [...ch.daily.claimed];
+      let weeklyClaimed = ch.weekly.claimed;
+      const counters = { ...ch.weekly.counters };
+      Object.entries(a.counters).forEach(([k, v]) => { counters[k] = (counters[k] ?? 0) + v; });
+      a.claimedIds.forEach((id) => {
+        if (id.startsWith('w_')) weeklyClaimed = true;
+        else if (!dailyClaimed.includes(id)) dailyClaimed.push(id);
+      });
+      return {
+        ...s,
+        gold: s.gold + a.gold,
+        challenges: {
+          daily: { ...ch.daily, claimed: dailyClaimed },
+          weekly: { ...ch.weekly, claimed: weeklyClaimed, counters },
+        },
+      };
+    }
     case 'toggleMute':
       return { ...s, muted: !s.muted };
     case 'toggleMusic':
@@ -106,6 +135,7 @@ export function MetaProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(meta)); } catch { /* sin almacenamiento */ }
   }, [meta]);
+  useEffect(() => { dispatch({ type: 'challengesTick' }); }, []);
   useEffect(() => { setMuted(meta.muted); }, [meta.muted]);
   useEffect(() => { music.setEnabled(meta.musicOn && !meta.muted); }, [meta.musicOn, meta.muted]);
 

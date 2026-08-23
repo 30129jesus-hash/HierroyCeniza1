@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useMeta } from '../state/store';
-import { ACHIEVEMENTS, DUPE_GOLD, PACK_COST, PLAYER_CARDS, RARITY_COLOR, RELIC_LOOKUP, SHOP_POOL_COMMON, SHOP_POOL_EPIC, SHOP_POOL_RARE, STORY_LEVELS, cardById } from '../game/cards';
+import { ACHIEVEMENTS, DUPE_GOLD, PACK_COST, PACTS, PLAYER_CARDS, RARITY_COLOR, RELIC_LOOKUP, SHOP_POOL_COMMON, SHOP_POOL_EPIC, SHOP_POOL_LEGENDARY, SHOP_POOL_RARE, STORY_LEVELS, cardById, pactById } from '../game/cards';
 import type { AchDef, CardDef, RelicDef } from '../game/types';
+import { challengeById, weeklyCounter } from '../game/challenges';
 import { sfx } from '../game/audio';
 import CardView from './CardView';
 import { Sigil, RuneRing } from './icons';
@@ -47,6 +48,7 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
     { id: 'story', label: 'Modo Historia', desc: '8 estandartes, 8 jefes', icon: 'flag', hue: 46 },
     { id: 'survival', label: 'Supervivencia', desc: `Récord: ${meta.survivalBest} rondas`, icon: 'infinity', hue: 0 },
     { id: 'versus', label: 'Versus', desc: `${meta.vsWins} duelos ganados`, icon: 'swords', hue: 20 },
+    { id: 'challenges', label: 'Desafíos', desc: `${meta.challenges.daily.claimed.length}/${meta.challenges.daily.ids.length} diarios · semanal ${meta.challenges.weekly.claimed ? 'hecho' : 'pendiente'}`, icon: 'sun', hue: 48 },
     { id: 'arsenal', label: 'Arsenal', desc: meta.deck.length === 20 ? 'Tu mazo de 20, a tu gusto' : 'Elige tus 20 cartas de guerra', icon: 'helm', hue: 220 },
     { id: 'shop', label: 'Tienda', desc: 'Sobres de recluta y de guerra', icon: 'bag', hue: 130 },
     { id: 'collection', label: 'Colección', desc: `${Object.values(meta.collection).reduce((a, b) => a + b, 0)} cartas reunidas`, icon: 'cards', hue: 210 },
@@ -117,8 +119,28 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
 
 /* ================= HISTORIA ================= */
 
-export function StoryScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (level: number) => void }) {
+export function StoryScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (level: number, pacts: string[]) => void }) {
   const { meta } = useMeta();
+  const [sel, setSel] = useState<number | null>(null);
+  const [pacts, setPacts] = useState<string[]>([]);
+
+  const togglePact = (id: string) => {
+    sfx.click();
+    setPacts((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  };
+
+  const startLevel = () => {
+    if (sel === null) return;
+    sfx.summon();
+    onPlay(sel, pacts);
+    setSel(null);
+    setPacts([]);
+  };
+
+  const selDef = sel !== null ? STORY_LEVELS[sel - 1] : null;
+  const baseReward = selDef ? (meta.storyCleared.includes(sel ?? 0) ? 25 : selDef.reward) : 0;
+  const totalMult = pacts.reduce((m, id) => m * pactById(id).mult, 1);
+
   return (
     <div className="bg-arena min-h-screen relative">
       <div className="bg-vignette absolute inset-0 pointer-events-none" />
@@ -131,7 +153,7 @@ export function StoryScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (l
             const cleared = meta.storyCleared.includes(i + 1);
             return (
               <button key={lv.n} disabled={!unlocked}
-                onClick={() => { sfx.click(); onPlay(i + 1); }}
+                onClick={() => { sfx.click(); setSel(i + 1); setPacts([]); }}
                 className={`panel-dark relative p-4 text-left transition-transform anim-slide-down ${unlocked ? 'hover:-translate-y-1.5 cursor-pointer' : 'opacity-45 cursor-not-allowed'}`}
                 style={{ animationDelay: `${i * 0.06}s`, borderColor: unlocked ? `hsl(${lv.hue} 60% 45% / 0.55)` : undefined }}>
                 <div className="flex items-center justify-between mb-3">
@@ -161,6 +183,63 @@ export function StoryScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (l
         </div>
         <p className="font-body italic text-bone-500 text-center text-xs mt-8">«Cada estandarte que cae acerca el amanecer... o lo entierra para siempre.»</p>
       </div>
+
+      {/* modal de Pactos Oscuros */}
+      {selDef && sel !== null && (
+        <div className="fixed inset-0 z-[60] bg-ink-950/94 flex items-center justify-center p-4">
+          <div className="panel-dark max-w-lg w-full p-6 sm:p-8 anim-zoom-in max-h-[92vh] overflow-y-auto">
+            <p className="font-body text-[0.6rem] uppercase tracking-[0.3em] text-blood-400">Nivel {String(sel).padStart(2, '0')} · {selDef.title}</p>
+            <h3 className="font-display text-3xl text-bone-100 mt-1">Pactos Oscuros</h3>
+            <p className="font-body text-xs text-bone-500 mt-1.5 leading-snug">
+              Jura desventajas voluntarias a cambio de oro multiplicado. Se acumulan: cada pacto multiplica la recompensa.
+            </p>
+
+            <div className="mt-4 flex flex-col gap-2">
+              {PACTS.map((p) => {
+                const on = pacts.includes(p.id);
+                return (
+                  <button key={p.id} onClick={() => togglePact(p.id)}
+                    className="flex items-start gap-3 p-3 text-left transition-all"
+                    style={{
+                      background: on ? 'linear-gradient(120deg, rgba(142,21,38,0.35), rgba(13,10,18,0.6))' : 'rgba(30,23,41,0.5)',
+                      border: `1px solid ${on ? 'rgba(255,77,94,0.65)' : 'rgba(168,151,122,0.22)'}`,
+                      boxShadow: on ? '0 0 14px rgba(224,47,69,0.25)' : 'none',
+                    }}>
+                    <span className="mt-0.5 shrink-0" style={{ color: on ? '#ff4d5e' : '#4a4358' }}><Sigil icon={p.icon} className="w-5 h-5" /></span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="font-display text-base leading-tight" style={{ color: on ? '#ff8a95' : '#cbbda0' }}>{p.name}</span>
+                        <span className="font-display text-sm text-gold-400 shrink-0">×{p.mult}</span>
+                      </span>
+                      <span className="block font-body text-[0.65rem] text-bone-300/80 mt-0.5">{p.cost}</span>
+                      <span className="block font-body italic text-[0.6rem] text-bone-500 mt-0.5">{p.desc}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between border-t border-bone-500/15 pt-3">
+              <span className="font-body text-[0.6rem] uppercase tracking-widest text-bone-500">Recompensa estimada</span>
+              <span className="flex items-center gap-1.5 font-display text-2xl text-gold-400 text-glow-gold">
+                <Sigil icon="coin" className="w-5 h-5" /> {Math.round(baseReward * totalMult)}
+              </span>
+            </div>
+
+            <div className="mt-4 flex gap-3">
+              <button onClick={() => { sfx.click(); setSel(null); setPacts([]); }}
+                className="btn-rune flex-1 px-4 py-2 text-lg bg-ink-700 text-bone-300 border border-bone-500/25">
+                Cancelar
+              </button>
+              <button onClick={startLevel}
+                className="btn-rune flex-[2] px-4 py-2 text-lg font-bold text-bone-100"
+                style={{ background: 'linear-gradient(160deg, #8e1526, #5c0d18)', border: '1px solid rgba(255,77,94,0.5)', boxShadow: '0 0 18px rgba(224,47,69,0.4)' }}>
+                {pacts.length > 0 ? `Marchar bajo ${pacts.length} pacto${pacts.length > 1 ? 's' : ''}` : 'Marchar a la batalla'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -249,14 +328,20 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
   const [opening, setOpening] = useState<{ cards: string[]; revealed: number; saved: boolean; base: Record<string, number> } | null>(null);
   const [err, setErr] = useState(false);
 
+  /* Probabilidades nerfeadas: las cartas fuertes (épica/legendaria) son mucho más escasas. */
   const genPack = (kind: PackKind): string[] => {
     if (kind === 'recluta') {
       const third = Math.random() < 0.3 ? pick(SHOP_POOL_RARE) : pick(SHOP_POOL_COMMON);
       return [pick(SHOP_POOL_COMMON), pick(SHOP_POOL_COMMON), third];
     }
-    const second = Math.random() < 0.45 ? pick(SHOP_POOL_EPIC) : pick(SHOP_POOL_RARE);
-    const third = Math.random() < 0.25 ? pick(SHOP_POOL_EPIC) : pick(SHOP_POOL_RARE);
-    return [pick(SHOP_POOL_RARE), second, third];
+    // Sobre de Guerra: 1 rara garantizada + 2 con probabilidades bajas de épica/legendaria
+    const strong = (pEpic: number, pLeg: number): string => {
+      const r = Math.random();
+      if (r < pLeg) return pick(SHOP_POOL_LEGENDARY);
+      if (r < pLeg + pEpic) return pick(SHOP_POOL_EPIC);
+      return pick(SHOP_POOL_RARE);
+    };
+    return [pick(SHOP_POOL_RARE), strong(0.32, 0.08), strong(0.22, 0.06)];
   };
 
   const isDupe = (o: { cards: string[]; base: Record<string, number> }, id: string, idx: number) => {
@@ -299,7 +384,7 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
 
   const packs = [
     { kind: 'recluta' as PackKind, name: 'Sobre de Recluta', cost: PACK_COST.recluta, desc: '3 cartas. Humildes, pero el acero barato también corta.', icon: 'shield', hue: 210, odds: '70% común · 30% rara' },
-    { kind: 'guerra' as PackKind, name: 'Sobre de Guerra', cost: PACK_COST.guerra, desc: '3 cartas forjadas en batalla. Rara garantizada, posible épica.', icon: 'dragon', hue: 12, odds: '55% rara · 45% épica o legendaria' },
+    { kind: 'guerra' as PackKind, name: 'Sobre de Guerra', cost: PACK_COST.guerra, desc: '3 cartas forjadas en batalla. Rara garantizada, épicas y legendarias escasas.', icon: 'dragon', hue: 12, odds: '1 rara garantizada · épica 22-32% · legendaria 6-8%' },
   ];
 
   return (
@@ -527,6 +612,87 @@ export function AchievementsScreen({ onBack }: { onBack: () => void }) {
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= DESAFÍOS DIARIOS / SEMANALES ================= */
+
+export function ChallengesScreen({ onBack }: { onBack: () => void }) {
+  const { meta } = useMeta();
+  const ch = meta.challenges;
+
+  const dateLabel = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const weeklyDef = ch.weekly.id ? challengeById(ch.weekly.id) : null;
+  const weeklyCounterDef = ch.weekly.id ? weeklyCounter(ch.weekly.id) : undefined;
+  const weeklyProgress = weeklyCounterDef
+    ? Math.min(ch.weekly.counters[weeklyCounterDef.counter] ?? 0, weeklyCounterDef.need)
+    : null;
+
+  return (
+    <div className="bg-arena min-h-screen relative">
+      <div className="bg-vignette absolute inset-0 pointer-events-none" />
+      <Embers n={8} />
+      <Header title="Desafíos" sub="Encargos del gremio, oro contante" onBack={onBack} />
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-8">
+        <p className="font-body text-[0.68rem] uppercase tracking-widest text-bone-500 mb-1">
+          Desafíos diarios · <b className="text-bone-300 capitalize">{dateLabel}</b>
+        </p>
+        <p className="font-body text-xs text-bone-500 mb-4 leading-snug">
+          Se renuevan cada día. Complétalos en cualquier modo y el oro se abona al instante.
+        </p>
+        <div className="grid sm:grid-cols-3 gap-4">
+          {ch.daily.ids.map((id, i) => {
+            const def = challengeById(id);
+            const done = ch.daily.claimed.includes(id);
+            return (
+              <div key={id} className={`panel-dark p-4 anim-slide-down ${done ? '' : ''}`}
+                style={{ animationDelay: `${i * 0.06}s`, borderColor: done ? `hsl(${def.hue} 60% 45% / 0.6)` : undefined, opacity: done ? 1 : 0.92 }}>
+                <div className="flex items-center justify-between">
+                  <span style={{ color: done ? `hsl(${def.hue} 80% 62%)` : '#8a7a5f', filter: done ? `drop-shadow(0 0 8px hsl(${def.hue} 90% 55% / 0.7))` : undefined }}>
+                    <Sigil icon={def.icon} className="w-7 h-7" />
+                  </span>
+                  <span className="flex items-center gap-1 font-display text-sm text-gold-400"><Sigil icon="coin" className="w-3.5 h-3.5" />{def.reward}</span>
+                </div>
+                <p className="font-display text-lg leading-tight mt-2" style={{ color: done ? `hsl(${def.hue} 75% 70%)` : '#f0e6cf' }}>{def.name}</p>
+                <p className="font-body text-[0.68rem] text-bone-300/80 mt-1 leading-snug min-h-8">{def.desc}</p>
+                <p className={`mt-2 inline-flex items-center gap-1 font-body text-[0.58rem] uppercase tracking-widest px-1.5 py-0.5 border ${done ? 'text-venom-400 border-venom-400/40' : 'text-bone-500 border-bone-500/25'}`}>
+                  <Sigil icon={done ? 'sun' : 'lock'} className="w-3 h-3" />{done ? 'Completado' : 'Pendiente'}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="font-body text-[0.68rem] uppercase tracking-widest text-bone-500 mt-8 mb-3">Desafío semanal</p>
+        {weeklyDef && (
+          <div className="panel-dark p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+            style={{ borderColor: ch.weekly.claimed ? `hsl(${weeklyDef.hue} 60% 45% / 0.6)` : 'rgba(232,182,76,0.3)' }}>
+            <span className="shrink-0" style={{ color: ch.weekly.claimed ? `hsl(${weeklyDef.hue} 80% 62%)` : '#e8b64c', filter: `drop-shadow(0 0 10px hsl(${weeklyDef.hue} 90% 55% / 0.6))` }}>
+              <Sigil icon={weeklyDef.icon} className="w-10 h-10" />
+            </span>
+            <div className="flex-1">
+              <p className="font-display text-2xl leading-tight" style={{ color: ch.weekly.claimed ? `hsl(${weeklyDef.hue} 75% 70%)` : '#f0e6cf' }}>{weeklyDef.name}</p>
+              <p className="font-body text-xs text-bone-300/80 mt-1">{weeklyDef.desc}</p>
+              {weeklyProgress !== null && weeklyCounterDef && (
+                <div className="mt-2 max-w-xs">
+                  <div className="h-2 bg-ink-950 border border-bone-500/30 overflow-hidden">
+                    <div className="hp-bar-fill h-full" style={{ width: `${(weeklyProgress / weeklyCounterDef.need) * 100}%`, background: 'linear-gradient(90deg, #b8862f, #e8b64c)' }} />
+                  </div>
+                  <p className="font-body text-[0.6rem] text-bone-500 mt-0.5">{weeklyProgress} / {weeklyCounterDef.need}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <span className="flex items-center gap-1 font-display text-2xl text-gold-400 text-glow-gold"><Sigil icon="coin" className="w-5 h-5" />{weeklyDef.reward}</span>
+              <span className={`font-body text-[0.6rem] uppercase tracking-widest ${ch.weekly.claimed ? 'text-venom-400' : 'text-bone-500'}`}>
+                {ch.weekly.claimed ? 'Reclamado' : 'En curso'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

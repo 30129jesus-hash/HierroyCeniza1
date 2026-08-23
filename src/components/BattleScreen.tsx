@@ -115,6 +115,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
             if (e.kind === 'fire') sfx.fire(); else if (e.kind === 'ice') sfx.ice(); else if (e.kind === 'poison') sfx.poison(); else sfx.hit();
             spawnFx(anchor(e.side, e.lane), 'txt', `-${e.amount}`, DMG_COLOR[e.kind]);
             spawnFx(anchor(e.side, e.lane), 'burst', undefined, DMG_COLOR[e.kind]);
+            if (e.amount >= 5) setShakeId((x) => x + 1); // golpe fuerte: sacude el tablero
             break;
           case 'damageHero':
             sfx.heroHit();

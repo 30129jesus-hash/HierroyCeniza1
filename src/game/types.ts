@@ -89,10 +89,13 @@ export interface BattleConfig {
   playerDeck: CardDef[];
   enemyDeck: CardDef[];
   heroHp: number;
+  enemyHeroHp?: number;    // vida del jefe (Pactos Oscuros) — por defecto = heroHp
   maxRounds: number;
   enemyStatBonus: number;  // +X/+X a unidades enemigas
   enemyEnergyBonus: number;
+  playerEnergyPenalty?: number; // Pactos: -X energía máxima del jugador
   relics?: string[];       // reliquias activas (supervivencia)
+  pacts?: string[];        // Pactos Oscuros activos (historia)
 }
 
 export type BattlePhase = 'deployPlayer' | 'deployEnemy' | 'attackPlayer' | 'attackEnemy' | 'done';
@@ -118,6 +121,9 @@ export interface BattleState {
   kills: number;
   dragonKills: number;     // dragones abatidos (para logros)
   heroDamageTaken: number; // daño recibido por tu héroe (para logros)
+  heroDamageDealt: number; // daño infligido al héroe enemigo (desafíos)
+  maxCostPlayed: number;   // coste máximo de carta jugada por el jugador (desafíos)
+  spellsPlayed: number;    // pociones/mejoras jugadas por el jugador (desafíos)
 }
 
 export type BattleEvent =
@@ -162,8 +168,30 @@ export interface MetaState {
   totalLosses: number;
   achievements: string[];  // ids de logros desbloqueados
   dragonsSlain: number;    // dragones abatidos acumulados
+  challenges: {
+    daily: { date: string; ids: string[]; claimed: string[] };
+    weekly: { key: string; id: string; claimed: boolean; counters: Record<string, number> };
+  };
   muted: boolean;
   musicOn: boolean;
+}
+
+export interface PactDef {
+  id: string;
+  name: string;
+  desc: string;
+  cost: string;   // penalización
+  mult: number;   // multiplicador de recompensa
+  icon: string;
+}
+
+export interface ChallengeDef {
+  id: string;
+  name: string;
+  desc: string;
+  icon: string;
+  hue: number;
+  reward: number;
 }
 
 export interface RelicDef {

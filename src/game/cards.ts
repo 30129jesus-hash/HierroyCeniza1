@@ -1,4 +1,4 @@
-import type { AchDef, CardDef, Rarity, RelicDef } from './types';
+import type { AchDef, CardDef, ChallengeDef, PactDef, Rarity, RelicDef } from './types';
 
 const u = (
   id: string, name: string, side: CardDef['side'], cost: number,
@@ -277,7 +277,8 @@ export const STARTER_COLLECTION: Record<string, number> = {
 
 export const SHOP_POOL_COMMON = PLAYER_CARDS.filter((c) => c.rarity === 'común').map((c) => c.id);
 export const SHOP_POOL_RARE = PLAYER_CARDS.filter((c) => c.rarity === 'rara').map((c) => c.id);
-export const SHOP_POOL_EPIC = PLAYER_CARDS.filter((c) => c.rarity === 'épica' || c.rarity === 'legendaria').map((c) => c.id);
+export const SHOP_POOL_EPIC = PLAYER_CARDS.filter((c) => c.rarity === 'épica').map((c) => c.id);
+export const SHOP_POOL_LEGENDARY = PLAYER_CARDS.filter((c) => c.rarity === 'legendaria').map((c) => c.id);
 
 /* ---------- economía ---------- */
 
@@ -330,3 +331,18 @@ export const ACHIEVEMENTS: AchDef[] = [
 ];
 
 export const achById = (id: string): AchDef => ACHIEVEMENTS.find((a) => a.id === id)!;
+
+/* ================= PACTOS OSCUROS (Historia) ================= */
+
+export const PACTS: PactDef[] = [
+  { id: 'pacto_sangre', name: 'Pacto de Sangre', cost: 'Empiezas con 15 de vida en vez de 25.', mult: 2, icon: 'heart', desc: 'El jefe bebe de tu propia vena antes de empezar.' },
+  { id: 'pacto_hierro', name: 'Pacto de Hierro', cost: 'Las unidades enemigas ganan +1/+1.', mult: 1.5, icon: 'claw', desc: 'El enemigo marcha mejor armado de lo debido.' },
+  { id: 'pacto_cuervo', name: 'Pacto del Cuervo', cost: '-1 de energía máxima cada ronda.', mult: 1.5, icon: 'feather', desc: 'Los cuervos se llevan parte de tu vigor.' },
+  { id: 'pacto_ceniza', name: 'Pacto de Ceniza', cost: 'El héroe enemigo gana +5 de vida.', mult: 1.5, icon: 'skull', desc: 'El jefe se alza más resistente ante ti.' },
+];
+
+export const pactById = (id: string): PactDef => PACTS.find((p) => p.id === id)!;
+
+/* Multiplicador total de una combinación de pactos (redondeo al entero). */
+export const pactMultiplier = (pacts: string[]): number =>
+  pacts.reduce((m, id) => m * pactById(id).mult, 1);

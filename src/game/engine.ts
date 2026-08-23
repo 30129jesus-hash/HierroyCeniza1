@@ -9,9 +9,9 @@ export const slotOf = (side: Side, lane: number) => (side === 'player' ? lane : 
 export const opp = (side: Side): Side => (side === 'player' ? 'enemy' : 'player');
 
 const energyMax = (s: BattleState, side: Side) =>
-  Math.min(9, s.round + (side === 'enemy'
+  Math.min(9, Math.max(1, s.round + (side === 'enemy'
     ? s.cfg.enemyEnergyBonus
-    : (s.cfg.relics ?? []).includes('rel_poder') ? 1 : 0));
+    : ((s.cfg.relics ?? []).includes('rel_poder') ? 1 : 0) - (s.cfg.playerEnergyPenalty ?? 0))));
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -67,14 +67,17 @@ export function createBattle(cfg: BattleConfig): BattleState {
       player: { cur: 1, max: 1 },
       enemy: { cur: 1 + cfg.enemyEnergyBonus, max: 1 + cfg.enemyEnergyBonus },
     },
-    heroHp: { player: cfg.heroHp, enemy: cfg.heroHp },
-    heroMaxHp: { player: cfg.heroHp, enemy: cfg.heroHp },
+    heroHp: { player: cfg.heroHp, enemy: cfg.enemyHeroHp ?? cfg.heroHp },
+    heroMaxHp: { player: cfg.heroHp, enemy: cfg.enemyHeroHp ?? cfg.heroHp },
     log: [],
     logSeq: 0,
     uidSeq: 0,
     kills: 0,
     dragonKills: 0,
     heroDamageTaken: 0,
+    heroDamageDealt: 0,
+    maxCostPlayed: 0,
+    spellsPlayed: 0,
   };
   draw(s, 'player', 3);
   draw(s, 'enemy', 3);
@@ -160,7 +163,10 @@ function damageHero(s: BattleState, side: Side, amount: number, events: BattleEv
   if (side === 'player') {
     s.heroDamageTaken += dmg;
     log(s, `Recibes ${dmg} de daño.`, 'bad');
-  } else log(s, `Infliges ${dmg} de daño al héroe enemigo.`, 'good');
+  } else {
+    s.heroDamageDealt += dmg;
+    log(s, `Infliges ${dmg} de daño al héroe enemigo.`, 'good');
+  }
   checkWin(s, events);
 }
 
@@ -370,6 +376,11 @@ export function playCard(prev: BattleState, side: Side, handIdx: number, target:
 
   s.energy[side].cur -= card.cost;
   s.hands[side].splice(handIdx, 1);
+
+  if (side === 'player') {
+    s.maxCostPlayed = Math.max(s.maxCostPlayed, card.cost);
+    if (card.kind === 'spell') s.spellsPlayed += 1;
+  }
 
   if (card.kind === 'unit') {
     const lane = (target as { lane: number }).lane;

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { MetaProvider, useMeta } from './state/store';
 import type { BattleConfig, MetaState, Side } from './game/types';
-import { ALL_CARDS, RELICS, STARTER_COLLECTION, STORY_LEVELS, achById, cardById, randomRelicOptions, survivalDeck, vsDeck } from './game/cards';
+import { ALL_CARDS, RELICS, STARTER_COLLECTION, STORY_LEVELS, achById, cardById, pactById, randomRelicOptions, survivalDeck, vsDeck } from './game/cards';
+import { resolveChallenges, challengeById } from './game/challenges';
 import BattleScreen, { type BattleStats } from './components/BattleScreen';
-import { AchievementsScreen, CollectionScreen, DeckScreen, RelicPicker, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
+import { AchievementsScreen, ChallengesScreen, CollectionScreen, DeckScreen, RelicPicker, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
 import { Sigil } from './components/icons';
 import { sfx } from './game/audio';
 
@@ -14,6 +15,7 @@ type Screen =
   | { name: 'versus' }
   | { name: 'arsenal' }
   | { name: 'achievements' }
+  | { name: 'challenges' }
   | { name: 'shop' }
   | { name: 'collection' }
   | { name: 'battle' };
@@ -97,15 +99,19 @@ function playerBattleDeck(collection: Record<string, number>, saved: string[] = 
 function Inner() {
   const { meta, dispatch } = useMeta();
   const [screen, setScreen] = useState<Screen>({ name: 'title' });
-  const [battleCtx, setBattleCtx] = useState<{ cfg: BattleConfig; mode: 'historia' | 'supervivencia' | 'versus'; param: number } | null>(null);
+  const [battleCtx, setBattleCtx] = useState<{ cfg: BattleConfig; mode: 'historia' | 'supervivencia' | 'versus'; param: number; pacts: string[] } | null>(null);
   const [reward, setReward] = useState<Reward | null>(null);
   const [streak, setStreak] = useState(0);
   const [battleKey, setBattleKey] = useState(0);
   const [runRelics, setRunRelics] = useState<string[]>([]);
   const [relicPick, setRelicPick] = useState<{ options: import('./game/types').RelicDef[]; nextStreak: number } | null>(null);
 
-  const startStory = (level: number) => {
+  const startStory = (level: number, pacts: string[] = []) => {
     const lv = STORY_LEVELS[level - 1];
+    const heroHp = pacts.includes('pacto_sangre') ? 15 : 25;
+    const enemyStatBonus = lv.bonus + (pacts.includes('pacto_hierro') ? 1 : 0);
+    const playerEnergyPenalty = pacts.includes('pacto_cuervo') ? 1 : 0;
+    const enemyHeroHp = pacts.includes('pacto_ceniza') ? 30 : undefined;
     const cfg: BattleConfig = {
       mode: 'historia', level,
       title: lv.title,
@@ -114,10 +120,12 @@ function Inner() {
       enemyHue: lv.hue,
       playerDeck: playerBattleDeck(meta.collection, meta.deck),
       enemyDeck: buildBattleDeck(lv.deck),
-      heroHp: 25, maxRounds: 20,
-      enemyStatBonus: lv.bonus, enemyEnergyBonus: 0,
+      heroHp, enemyHeroHp, maxRounds: 20,
+      enemyStatBonus, enemyEnergyBonus: 0,
+      playerEnergyPenalty,
+      pacts,
     };
-    setBattleCtx({ cfg, mode: 'historia', param: level });
+    setBattleCtx({ cfg, mode: 'historia', param: level, pacts });
     setBattleKey((k) => k + 1);
     setScreen({ name: 'battle' });
   };
@@ -136,7 +144,7 @@ function Inner() {
       enemyStatBonus: Math.min(curStreak, 6), enemyEnergyBonus: curStreak >= 3 ? 1 : 0,
       relics,
     };
-    setBattleCtx({ cfg, mode: 'supervivencia', param: curStreak });
+    setBattleCtx({ cfg, mode: 'supervivencia', param: curStreak, pacts: [] });
     setBattleKey((k) => k + 1);
     setScreen({ name: 'battle' });
   };
@@ -157,7 +165,7 @@ function Inner() {
       heroHp: 25, maxRounds: 20,
       enemyStatBonus: v.bonus, enemyEnergyBonus: v.energy,
     };
-    setBattleCtx({ cfg, mode: 'versus', param: diff });
+    setBattleCtx({ cfg, mode: 'versus', param: diff, pacts: [] });
     setBattleKey((k) => k + 1);
     setScreen({ name: 'battle' });
   };
