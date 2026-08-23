@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { MetaProvider, useMeta } from './state/store';
-import type { BattleConfig, Side } from './game/types';
-import { ALL_CARDS, STARTER_COLLECTION, STORY_LEVELS, cardById, survivalDeck, vsDeck } from './game/cards';
-import BattleScreen from './components/BattleScreen';
-import { CollectionScreen, DeckScreen, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
+import type { BattleConfig, MetaState, Side } from './game/types';
+import { ALL_CARDS, RELICS, STARTER_COLLECTION, STORY_LEVELS, achById, cardById, randomRelicOptions, survivalDeck, vsDeck } from './game/cards';
+import BattleScreen, { type BattleStats } from './components/BattleScreen';
+import { AchievementsScreen, CollectionScreen, DeckScreen, RelicPicker, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
 import { Sigil } from './components/icons';
 import { sfx } from './game/audio';
 
@@ -13,9 +13,38 @@ type Screen =
   | { name: 'survival' }
   | { name: 'versus' }
   | { name: 'arsenal' }
+  | { name: 'achievements' }
   | { name: 'shop' }
   | { name: 'collection' }
   | { name: 'battle' };
+
+/* Proyección del meta tras aplicar las recompensas de esta batalla (el state aún no se ha actualizado). */
+interface ProjectedMeta {
+  gold: number;
+  totalWins: number;
+  dragonsSlain: number;
+  vsWins: number;
+  storyCleared: number[];
+  survivalStreak: number;
+  collection: Record<string, number>;
+}
+
+function achievementsEarned(meta: MetaState, proj: ProjectedMeta, stats: BattleStats, won: boolean): string[] {
+  const uniqueCards = Object.values(proj.collection).filter((n) => n > 0).length;
+  const has = (id: string) => meta.achievements.includes(id);
+  const earned: string[] = [];
+  if (won && !has('ach_primera') && proj.totalWins >= 1) earned.push('ach_primera');
+  if (won && !has('ach_ileso') && stats.heroDamageTaken === 0) earned.push('ach_ileso');
+  if (won && !has('ach_sacrificio') && stats.heroHpLeft > 0 && stats.heroHpLeft <= 5) earned.push('ach_sacrificio');
+  if (!has('ach_nivel4') && proj.storyCleared.includes(4)) earned.push('ach_nivel4');
+  if (!has('ach_campana') && proj.storyCleared.length >= 8) earned.push('ach_campana');
+  if (!has('ach_dragones') && proj.dragonsSlain >= 3) earned.push('ach_dragones');
+  if (!has('ach_racha5') && proj.survivalStreak >= 5) earned.push('ach_racha5');
+  if (!has('ach_versus') && proj.vsWins >= 5) earned.push('ach_versus');
+  if (!has('ach_rico') && proj.gold >= 1000) earned.push('ach_rico');
+  if (!has('ach_coleccionista') && uniqueCards >= 15) earned.push('ach_coleccionista');
+  return earned;
+}
 
 interface Reward {
   title: string;
@@ -72,6 +101,8 @@ function Inner() {
   const [reward, setReward] = useState<Reward | null>(null);
   const [streak, setStreak] = useState(0);
   const [battleKey, setBattleKey] = useState(0);
+  const [runRelics, setRunRelics] = useState<string[]>([]);
+  const [relicPick, setRelicPick] = useState<{ options: import('./game/types').RelicDef[]; nextStreak: number } | null>(null);
 
   const startStory = (level: number) => {
     const lv = STORY_LEVELS[level - 1];
@@ -91,7 +122,8 @@ function Inner() {
     setScreen({ name: 'battle' });
   };
 
-  const startSurvival = (curStreak: number) => {
+  const startSurvival = (curStreak: number, relics: string[] = []) => {
+    setRunRelics(relics);
     const cfg: BattleConfig = {
       mode: 'supervivencia',
       title: `Horda ${curStreak + 1}`,
@@ -102,6 +134,7 @@ function Inner() {
       enemyDeck: buildBattleDeck(survivalDeck(curStreak + 1)),
       heroHp: 25 + Math.min(curStreak * 2, 10), maxRounds: 20,
       enemyStatBonus: Math.min(curStreak, 6), enemyEnergyBonus: curStreak >= 3 ? 1 : 0,
+      relics,
     };
     setBattleCtx({ cfg, mode: 'supervivencia', param: curStreak });
     setBattleKey((k) => k + 1);
@@ -129,10 +162,36 @@ function Inner() {
     setScreen({ name: 'battle' });
   };
 
-  const onBattleEnd = (won: boolean, stats: { kills: number; rounds: number }, conceded: boolean) => {
+  const [achToast, setAchToast] = useState<{ id: string; at: number }[]>([]);
+
+  const grantAch = (proj: ProjectedMeta, stats: BattleStats, won: boolean) => {
+    const earned = achievementsEarned(meta, proj, stats, won);
+    if (earned.length === 0) return;
+    const gold = earned.reduce((sum, id) => sum + achById(id).reward, 0);
+    dispatch({ type: 'unlockAch', ids: earned, gold });
+    setAchToast((t) => [...t, ...earned.map((id, i) => ({ id, at: Date.now() + i }))]);
+    earned.forEach((_, i) => {
+      setTimeout(() => setAchToast((t) => t.slice(1)), 3200 * (i + 1));
+    });
+  };
+
+  const onBattleEnd = (won: boolean, stats: BattleStats, conceded: boolean) => {
     setScreen({ name: 'title' });
     if (!battleCtx) return;
     const { mode, param } = battleCtx;
+
+    if (stats.dragonKills > 0) dispatch({ type: 'dragonKills', n: stats.dragonKills });
+
+    const baseProj = (): ProjectedMeta => ({
+      gold: meta.gold,
+      totalWins: meta.totalWins,
+      dragonsSlain: meta.dragonsSlain + stats.dragonKills,
+      vsWins: meta.vsWins,
+      storyCleared: meta.storyCleared,
+      survivalStreak: 0,
+      collection: meta.collection,
+    });
+
     if (mode === 'historia') {
       const lv = STORY_LEVELS[param - 1];
       if (won && !conceded) {
@@ -140,6 +199,7 @@ function Inner() {
         const gold = first ? lv.reward : 25;
         dispatch({ type: 'battleEnd', won: true, reward: gold });
         if (first) dispatch({ type: 'storyClear', level: param });
+        grantAch({ ...baseProj(), gold: meta.gold + gold, totalWins: meta.totalWins + 1, storyCleared: first ? [...meta.storyCleared, param] : meta.storyCleared }, stats, true);
         setReward({
           title: 'Botín de guerra',
           lines: [
@@ -152,6 +212,7 @@ function Inner() {
         });
       } else {
         dispatch({ type: 'battleEnd', won: false, reward: 0 });
+        grantAch(baseProj(), stats, false);
         setReward({
           title: 'Derrota',
           lines: [conceded ? 'Abandonaste el campo. El oro no se gana huyendo.' : `${lv.hero} se alzó vencedor. Afila el acero e inténtalo de nuevo.`],
@@ -163,16 +224,26 @@ function Inner() {
     } else if (mode === 'supervivencia') {
       if (won && !conceded) {
         const newStreak = streak + 1;
-        const gold = 12 + 4 * streak;
+        const bolsa = runRelics.includes('rel_bolsa') ? 5 : 0;
+        const gold = 12 + 4 * streak + bolsa;
         dispatch({ type: 'battleEnd', won: true, reward: gold });
         dispatch({ type: 'survival', streak: newStreak });
         setStreak(newStreak);
+        grantAch({ ...baseProj(), gold: meta.gold + gold, totalWins: meta.totalWins + 1, survivalStreak: newStreak }, stats, true);
+        const canPick = runRelics.length < RELICS.length;
         setReward({
           title: `Ronda ${newStreak} superada`,
-          lines: [`Racha: ${newStreak} · ${stats.kills} bajas.`, 'La siguiente horda ya huele la sangre. Tu héroe sana sus heridas.'],
+          lines: [
+            `Racha: ${newStreak} · ${stats.kills} bajas.`,
+            bolsa > 0 ? `La Bolsa del Mercenario añade ${bolsa} de oro extra.` : 'La siguiente horda ya huele la sangre. Tu héroe sana sus heridas.',
+          ],
           gold,
-          next: () => { setReward(null); startSurvival(newStreak); },
-          nextLabel: 'Siguiente cacería',
+          next: () => {
+            setReward(null);
+            if (!canPick) { startSurvival(newStreak, runRelics); return; }
+            setRelicPick({ options: randomRelicOptions(runRelics), nextStreak: newStreak });
+          },
+          nextLabel: canPick ? 'Elegir reliquia' : 'Siguiente cacería',
         });
       } else {
         dispatch({ type: 'battleEnd', won: false, reward: 0 });
@@ -180,6 +251,8 @@ function Inner() {
         const gold = streak > 0 && !conceded ? 10 : 0;
         if (gold > 0) dispatch({ type: 'gold', amount: gold });
         setStreak(0);
+        setRunRelics([]);
+        grantAch({ ...baseProj(), gold: meta.gold + gold }, stats, false);
         setReward({
           title: 'Fin de la cacería',
           lines: [
@@ -197,6 +270,7 @@ function Inner() {
       if (won && !conceded) {
         dispatch({ type: 'battleEnd', won: true, reward: rewards[param] });
         dispatch({ type: 'vsWin' });
+        grantAch({ ...baseProj(), gold: meta.gold + rewards[param], totalWins: meta.totalWins + 1, vsWins: meta.vsWins + 1 }, stats, true);
         setReward({
           title: 'Duelo ganado',
           lines: [`Victoria en categoría ${names[param]} · ${stats.kills} bajas.`, 'El perdedor paga su deuda en oro.'],
@@ -206,6 +280,7 @@ function Inner() {
         });
       } else {
         dispatch({ type: 'battleEnd', won: false, reward: 0 });
+        grantAch(baseProj(), stats, false);
         setReward({
           title: 'Duelo perdido',
           lines: [conceded ? 'Abandonaste el duelo. Sin honor no hay oro.' : 'El rival fue más rápido esta vez.'],
@@ -222,9 +297,10 @@ function Inner() {
     <div className="min-h-screen bg-ink-950 text-bone-300 no-select">
       {screen.name === 'title' && <TitleScreen onNav={(s) => setScreen({ name: s } as Screen)} />}
       {screen.name === 'story' && <StoryScreen onBack={() => setScreen({ name: 'title' })} onPlay={startStory} />}
-      {screen.name === 'survival' && <SurvivalScreen onBack={() => setScreen({ name: 'title' })} onPlay={() => startSurvival(0)} best={meta.survivalBest} />}
+      {screen.name === 'survival' && <SurvivalScreen onBack={() => setScreen({ name: 'title' })} onPlay={() => startSurvival(0, [])} best={meta.survivalBest} />}
       {screen.name === 'versus' && <VersusScreen onBack={() => setScreen({ name: 'title' })} onPlay={startVersus} />}
       {screen.name === 'arsenal' && <DeckScreen onBack={() => setScreen({ name: 'title' })} />}
+      {screen.name === 'achievements' && <AchievementsScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'shop' && <ShopScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'collection' && <CollectionScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'battle' && battleCtx && (
@@ -249,6 +325,39 @@ function Inner() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* avisos de logro desbloqueado */}
+      {achToast.length > 0 && (
+        <div className="fixed top-4 inset-x-0 z-[70] flex flex-col items-center gap-2 pointer-events-none px-4">
+          {achToast.map((t) => {
+            const a = achById(t.id);
+            return (
+              <div key={t.at} className="panel-dark px-5 py-3 flex items-center gap-3 anim-slide-down" style={{ borderColor: `hsl(${a.hue} 60% 45% / 0.7)` }}>
+                <span style={{ color: `hsl(${a.hue} 80% 62%)`, filter: `drop-shadow(0 0 8px hsl(${a.hue} 90% 55% / 0.8))` }}><Sigil icon={a.icon} className="w-6 h-6" /></span>
+                <div>
+                  <p className="font-body text-[0.58rem] uppercase tracking-widest text-gold-400">Hazaña completada</p>
+                  <p className="font-display text-lg leading-tight" style={{ color: `hsl(${a.hue} 75% 70%)` }}>{a.name} <span className="text-gold-400 text-sm">+{a.reward} oro</span></p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* elección de reliquia (supervivencia) */}
+      {relicPick && (
+        <RelicPicker
+          options={relicPick.options}
+          held={runRelics}
+          onPick={(id) => {
+            sfx.click();
+            const newRelics = id ? [...runRelics, id] : runRelics;
+            const ns = relicPick.nextStreak;
+            setRelicPick(null);
+            startSurvival(ns, newRelics);
+          }}
+        />
       )}
     </div>
   );
