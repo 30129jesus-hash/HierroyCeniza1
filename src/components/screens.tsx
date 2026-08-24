@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMeta } from '../state/store';
 import { ACHIEVEMENTS, DUPE_GOLD, PACK_COST, PACTS, PLAYER_CARDS, RARITY_COLOR, RELICS, RELIC_LOOKUP, SHOP_POOL_COMMON, SHOP_POOL_EPIC, SHOP_POOL_LEGENDARY, SHOP_POOL_RARE, STORY_LEVELS, cardById, pactById } from '../game/cards';
 import type { AchDef, CardDef, RelicDef } from '../game/types';
@@ -32,9 +32,51 @@ export function Header({ title, sub, onBack }: { title: string; sub: string; onB
         <h2 className="font-display text-2xl sm:text-4xl text-bone-100 text-glow-ember leading-none">{title}</h2>
         <p className="font-body text-[0.65rem] uppercase tracking-[0.25em] text-bone-500 mt-1">{sub}</p>
       </div>
-      <div className="flex items-center gap-1.5 font-display text-lg text-gold-400 text-glow-gold">
-        <Sigil icon="coin" className="w-5 h-5" /> {meta.gold}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 font-display text-lg text-gold-400 text-glow-gold">
+          <Sigil icon="coin" className="w-5 h-5" /> {meta.gold}
+        </div>
+        {meta.diamonds > 0 && (
+          <div className="flex items-center gap-1.5 font-display text-lg" style={{ color: '#6fe8ff', textShadow: '0 0 12px rgba(111,232,255,0.5)' }}>
+            <Sigil icon="gem" className="w-4 h-4" /> {meta.diamonds.toLocaleString()}
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+/* Carcasa con pestañas: agrupa varias secciones bajo un mismo techo. */
+export function TabShell({ title, sub, onBack, tabs, tab, onTab, children }: {
+  title: string; sub: string; onBack: () => void;
+  tabs: { id: string; label: string; icon: string }[];
+  tab: string; onTab: (id: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="bg-arena min-h-screen relative">
+      <div className="bg-vignette absolute inset-0 pointer-events-none" />
+      <Embers n={12} />
+      <Header title={title} sub={sub} onBack={onBack} />
+      <div className="relative z-10 flex justify-center gap-1.5 sm:gap-2 px-3 pt-4 flex-wrap">
+        {tabs.map((t) => {
+          const active = t.id === tab;
+          return (
+            <button key={t.id} onClick={() => { sfx.click(); onTab(t.id); }}
+              className="btn-rune flex items-center gap-2 px-4 sm:px-6 py-2 font-display text-base sm:text-xl transition-all"
+              style={{
+                background: active ? 'linear-gradient(160deg, #8e1526, #5c0d18)' : 'rgba(30,23,41,0.75)',
+                border: `1px solid ${active ? 'rgba(255,77,94,0.6)' : 'rgba(168,151,122,0.22)'}`,
+                color: active ? '#f0e6cf' : '#8a7a5f',
+                boxShadow: active ? '0 0 18px rgba(224,47,69,0.4)' : 'none',
+                transform: active ? 'translateY(-2px)' : 'none',
+              }}>
+              <Sigil icon={t.icon} className="w-4 h-4" /> {t.label}
+            </button>
+          );
+        })}
+      </div>
+      {children}
     </div>
   );
 }
@@ -46,15 +88,22 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
   const [confirmReset, setConfirmReset] = useState(false);
 
   const items = [
-    { id: 'story', label: 'Modo Historia', desc: '8 estandartes, 8 jefes', icon: 'flag', hue: 46 },
-    { id: 'survival', label: 'Supervivencia', desc: `Récord: ${meta.survivalBest} rondas`, icon: 'infinity', hue: 0 },
-    { id: 'versus', label: 'Versus', desc: `${meta.vsWins} duelos ganados`, icon: 'swords', hue: 20 },
-    { id: 'challenges', label: 'Desafíos', desc: `${meta.challenges.daily.claimed.length}/${meta.challenges.daily.ids.length} diarios · semanal ${meta.challenges.weekly.claimed ? 'hecho' : 'pendiente'}`, icon: 'sun', hue: 48 },
-    { id: 'arsenal', label: 'Arsenal', desc: meta.deck.length === 20 ? 'Tu mazo de 20, a tu gusto' : 'Elige tus 20 cartas de guerra', icon: 'helm', hue: 220 },
-    { id: 'shop', label: 'Tienda', desc: 'Sobres de recluta y de guerra', icon: 'bag', hue: 130 },
-    { id: 'collection', label: 'Colección', desc: `${Object.values(meta.collection).reduce((a, b) => a + b, 0)} cartas reunidas`, icon: 'cards', hue: 210 },
-    { id: 'achievements', label: 'Logros', desc: `${meta.achievements.length} de ${ACHIEVEMENTS.length} hazañas`, icon: 'crown', hue: 48 },
-    { id: 'abismo', label: 'El Abismo', desc: `${meta.diamonds.toLocaleString()} diamantes · oferta diaria y cosméticos`, icon: 'gem', hue: 190 },
+    {
+      id: 'modes', label: 'Batalla', icon: 'sword', hue: 46,
+      desc: `Historia · Supervivencia (récord ${meta.survivalBest}) · Versus (${meta.vsWins} duelos)`,
+    },
+    {
+      id: 'feats', label: 'Hazañas', icon: 'crown', hue: 48,
+      desc: `Desafíos ${meta.challenges.daily.claimed.length}/${meta.challenges.daily.ids.length} · Logros ${meta.achievements.length}/${ACHIEVEMENTS.length}`,
+    },
+    {
+      id: 'arsenal', label: 'Arsenal', icon: 'helm', hue: 220,
+      desc: `${meta.deck.length === 20 ? 'Mazo de 20 listo' : 'Arma tu mazo de 20'} · ${Object.keys(meta.collection).filter((k) => meta.collection[k] > 0).length} cartas únicas`,
+    },
+    {
+      id: 'market', label: 'Mercado', icon: 'bag', hue: 190,
+      desc: `Sobres, oferta diaria y cosméticos · ${meta.diamonds.toLocaleString()} diamantes`,
+    },
   ];
 
   return (
@@ -144,11 +193,8 @@ export function StoryScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (l
   const totalMult = pacts.reduce((m, id) => m * pactById(id).mult, 1);
 
   return (
-    <div className="bg-arena min-h-screen relative">
-      <div className="bg-vignette absolute inset-0 pointer-events-none" />
-      <Embers n={10} />
-      <Header title="La Campaña" sub="Ocho estandartes, un trono de ceniza" onBack={onBack} />
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-8">
+    <>
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-8 py-6">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {STORY_LEVELS.map((lv, i) => {
             const unlocked = i + 1 <= meta.storyUnlocked;
@@ -242,7 +288,7 @@ export function StoryScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (l
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -250,11 +296,8 @@ export function StoryScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (l
 
 export function SurvivalScreen({ onBack, onPlay, best }: { onBack: () => void; onPlay: () => void; best: number }) {
   return (
-    <div className="bg-arena min-h-screen relative flex flex-col">
-      <div className="bg-vignette absolute inset-0 pointer-events-none" />
-      <Embers n={14} />
-      <Header title="Supervivencia" sub="La horda no tiene fin" onBack={onBack} />
-      <div className="relative z-10 flex-1 flex items-center justify-center px-4">
+    <>
+      <div className="relative z-10 flex items-center justify-center px-4 py-8">
         <div className="panel-dark max-w-xl w-full p-8 sm:p-10 text-center anim-zoom-in">
           <div className="w-20 h-20 mx-auto relative mb-4" style={{ color: 'rgba(224,47,69,0.8)' }}>
             <RuneRing className="absolute inset-0 w-full h-full" />
@@ -283,7 +326,7 @@ export function SurvivalScreen({ onBack, onPlay, best }: { onBack: () => void; o
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -296,11 +339,8 @@ export function VersusScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (
     { n: 2, name: 'Élite', desc: 'Lo peor del abismo, con energía extra.', icon: 'demon', hue: 340, reward: 100, bonus: 'Enemigos +2/+2 y +1 energía' },
   ];
   return (
-    <div className="bg-arena min-h-screen relative">
-      <div className="bg-vignette absolute inset-0 pointer-events-none" />
-      <Embers n={10} />
-      <Header title="Versus" sub="Duelo contra la máquina" onBack={onBack} />
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-10 grid sm:grid-cols-3 gap-5">
+    <>
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-8 grid sm:grid-cols-3 gap-5">
         {diffs.map((d, i) => (
           <button key={d.n} onClick={() => { sfx.click(); onPlay(d.n); }}
             className="panel-dark p-6 text-left hover:-translate-y-1.5 transition-transform anim-slide-down"
@@ -317,7 +357,7 @@ export function VersusScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (
           </button>
         ))}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -390,11 +430,8 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
   ];
 
   return (
-    <div className="bg-arena min-h-screen relative">
-      <div className="bg-vignette absolute inset-0 pointer-events-none" />
-      <Embers n={8} />
-      <Header title="Tienda" sub="El mercader de la puerta negra" onBack={onBack} />
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-10">
+    <>
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-6">
         <p className="font-body italic text-bone-500 text-center text-sm mb-2">«Oro por acero, acero por sangre. El precio siempre es el mismo.»</p>
         <p className="font-body text-center text-[0.68rem] text-bone-300/80 mb-8">Las cartas repetidas se funden en oro: {DUPE_GOLD['común']}/{DUPE_GOLD['rara']}/{DUPE_GOLD['épica']}/{DUPE_GOLD['legendaria']} según rareza.</p>
         <div className="grid sm:grid-cols-2 gap-5 max-w-2xl mx-auto">
@@ -466,7 +503,7 @@ export function ShopScreen({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -486,11 +523,8 @@ export function CollectionScreen({ onBack }: { onBack: () => void }) {
   const deckSize = deckFromCollection().length;
 
   return (
-    <div className="bg-arena min-h-screen relative">
-      <div className="bg-vignette absolute inset-0 pointer-events-none" />
-      <Embers n={8} />
-      <Header title="Colección" sub="El arsenal del comandante" onBack={onBack} />
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 py-8">
+    <>
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 py-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div className="flex gap-2">
             {(['todas', 'unidades', 'hechizos'] as const).map((f) => (
@@ -519,7 +553,7 @@ export function CollectionScreen({ onBack }: { onBack: () => void }) {
           })}
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -578,11 +612,8 @@ export function AchievementsScreen({ onBack }: { onBack: () => void }) {
   const { meta } = useMeta();
   const unlockedCount = meta.achievements.length;
   return (
-    <div className="bg-arena min-h-screen relative">
-      <div className="bg-vignette absolute inset-0 pointer-events-none" />
-      <Embers n={8} />
-      <Header title="Logros" sub="Hazañas grabadas en hierro" onBack={onBack} />
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-8">
+    <>
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-6">
         <p className="font-body text-[0.68rem] uppercase tracking-widest text-bone-500 mb-6">
           <b className="text-gold-400">{unlockedCount}</b> de <b className="text-bone-100">{ACHIEVEMENTS.length}</b> hazañas completadas
         </p>
@@ -615,7 +646,7 @@ export function AchievementsScreen({ onBack }: { onBack: () => void }) {
           })}
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -634,11 +665,8 @@ export function ChallengesScreen({ onBack }: { onBack: () => void }) {
     : null;
 
   return (
-    <div className="bg-arena min-h-screen relative">
-      <div className="bg-vignette absolute inset-0 pointer-events-none" />
-      <Embers n={8} />
-      <Header title="Desafíos" sub="Encargos del gremio, oro contante" onBack={onBack} />
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-8">
+    <>
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-6">
         <p className="font-body text-[0.68rem] uppercase tracking-widest text-bone-500 mb-1">
           Desafíos diarios · <b className="text-bone-300 capitalize">{dateLabel}</b>
         </p>
@@ -696,7 +724,7 @@ export function ChallengesScreen({ onBack }: { onBack: () => void }) {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -766,11 +794,8 @@ export function DeckScreen({ onBack }: { onBack: () => void }) {
   const complete = deck.length === 20;
 
   return (
-    <div className="bg-arena min-h-screen relative">
-      <div className="bg-vignette absolute inset-0 pointer-events-none" />
-      <Embers n={8} />
-      <Header title="El Arsenal" sub="Forja tu mazo de guerra · 20 cartas, máx. 3 copias" onBack={onBack} />
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 py-8 grid lg:grid-cols-[1fr_21rem] gap-6 items-start">
+    <>
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 py-6 grid lg:grid-cols-[1fr_21rem] gap-6 items-start">
         {/* colección disponible */}
         <div className="panel-dark p-4">
           <p className="font-body text-[0.65rem] uppercase tracking-[0.2em] text-bone-500 mb-3">Tus cartas — clic para añadir al mazo</p>
@@ -860,7 +885,7 @@ export function DeckScreen({ onBack }: { onBack: () => void }) {
           <p className="font-display text-xl text-gold-400 text-glow-gold">Mazo guardado — a la batalla</p>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
