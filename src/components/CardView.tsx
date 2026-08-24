@@ -1,6 +1,8 @@
 import type { CardDef } from '../game/types';
 import { RARITY_COLOR } from '../game/cards';
 import { Sigil, RuneRing } from './icons';
+import { useMeta } from '../state/store';
+import { frameById } from '../game/premium';
 
 interface Props {
   card: CardDef;
@@ -18,7 +20,10 @@ const SCHOOL_ICON: Record<string, string> = {
 };
 
 export default function CardView({ card, size = 'hand', playable = true, selected = false, dimmed = false, count, onClick }: Props) {
-  const rc = RARITY_COLOR[card.rarity];
+  const { meta } = useMeta();
+  const frame = frameById(meta.activeFrame);
+  const rc = frame ? frame.accent : RARITY_COLOR[card.rarity];
+  const frameAnim = frame?.anim && frame.anim !== 'none' ? `anim-frame-${frame.anim}` : '';
   const isUnit = card.kind === 'unit';
   const w = size === 'shop' ? 'w-40 h-56' : size === 'tiny' ? 'w-24 h-32' : 'w-[7.2rem] h-[10.2rem] sm:w-32 sm:h-44';
 
@@ -30,14 +35,24 @@ export default function CardView({ card, size = 'hand', playable = true, selecte
       style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}
       aria-label={card.name}
     >
+      {/* halo del marco equipado */}
+      {frame && (
+        <div className={`absolute -inset-0.5 pointer-events-none ${frameAnim}`}
+          style={{ boxShadow: `0 0 14px ${frame.glow}, 0 0 4px ${frame.glow}`, opacity: 0.9 }} />
+      )}
+      {/* marco */}
       <div
-        className="absolute inset-0"
+        className={`absolute inset-0 ${frameAnim}`}
         style={{
-          background: `linear-gradient(170deg, hsl(${card.hue} 28% 16%) 0%, #0d0a12 70%)`,
+          background: frame
+            ? `linear-gradient(170deg, hsl(${card.hue} 30% 15%) 0%, #0d0a12 60%), radial-gradient(120% 60% at 50% 0%, ${frame.glow}, transparent 70%)`
+            : `linear-gradient(170deg, hsl(${card.hue} 28% 16%) 0%, #0d0a12 70%)`,
           border: `1.5px solid ${selected ? '#ffd76a' : rc}`,
           boxShadow: selected
             ? `0 0 22px ${rc}, inset 0 0 18px rgba(0,0,0,0.8)`
-            : `0 6px 18px rgba(0,0,0,0.6), inset 0 0 14px rgba(0,0,0,0.65)`,
+            : frame
+              ? `0 6px 18px rgba(0,0,0,0.6), inset 0 0 14px rgba(0,0,0,0.65), inset 0 0 10px ${frame.glow}`
+              : `0 6px 18px rgba(0,0,0,0.6), inset 0 0 14px rgba(0,0,0,0.65)`,
         }}
       />
       {/* costo */}

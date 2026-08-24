@@ -25,6 +25,12 @@ const defaultState = (): MetaState => ({
   },
   muted: false,
   musicOn: true,
+  diamonds: 0,
+  unlockedFrames: [],
+  activeFrame: null,
+  relicsOwned: [],
+  seasonEnds: 0,
+  offerClaimedDate: '',
 });
 
 function load(): MetaState {
@@ -50,6 +56,13 @@ type Action =
   | { type: 'dragonKills'; n: number }
   | { type: 'challengesTick' }
   | { type: 'challengesResolve'; claimedIds: string[]; gold: number; counters: Record<string, number> }
+  | { type: 'buyDiamonds'; amount: number }
+  | { type: 'spendDiamonds'; amount: number }
+  | { type: 'unlockFrame'; id: string }
+  | { type: 'setFrame'; id: string | null }
+  | { type: 'ownRelic'; id: string }
+  | { type: 'claimOffer'; date: string; card: string | null }
+  | { type: 'premiumInit'; now: number; seasonDays: number }
   | { type: 'toggleMute' }
   | { type: 'toggleMusic' }
   | { type: 'reset' };
@@ -109,6 +122,26 @@ function reducer(s: MetaState, a: Action): MetaState {
         },
       };
     }
+    case 'buyDiamonds':
+      return { ...s, diamonds: s.diamonds + a.amount };
+    case 'spendDiamonds':
+      return s.diamonds >= a.amount ? { ...s, diamonds: s.diamonds - a.amount } : s;
+    case 'unlockFrame':
+      return s.unlockedFrames.includes(a.id) ? s : { ...s, unlockedFrames: [...s.unlockedFrames, a.id] };
+    case 'setFrame':
+      return { ...s, activeFrame: a.id };
+    case 'ownRelic':
+      return s.relicsOwned.includes(a.id) ? s : { ...s, relicsOwned: [...s.relicsOwned, a.id] };
+    case 'claimOffer': {
+      const col = a.card ? { ...s.collection, [a.card]: (s.collection[a.card] ?? 0) + 1 } : s.collection;
+      return { ...s, gold: s.gold + 1000, collection: col, offerClaimedDate: a.date };
+    }
+    case 'premiumInit': {
+      if (s.seasonEnds === 0 || a.now > s.seasonEnds) {
+        return { ...s, seasonEnds: a.now + a.seasonDays * 86400000 };
+      }
+      return s;
+    }
     case 'toggleMute':
       return { ...s, muted: !s.muted };
     case 'toggleMusic':
@@ -135,7 +168,7 @@ export function MetaProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(meta)); } catch { /* sin almacenamiento */ }
   }, [meta]);
-  useEffect(() => { dispatch({ type: 'challengesTick' }); }, []);
+  useEffect(() => { dispatch({ type: 'challengesTick' }); dispatch({ type: 'premiumInit', now: Date.now(), seasonDays: 3 }); }, []);
   useEffect(() => { setMuted(meta.muted); }, [meta.muted]);
   useEffect(() => { music.setEnabled(meta.musicOn && !meta.muted); }, [meta.musicOn, meta.muted]);
 

@@ -184,6 +184,36 @@ export interface MetaState {
   };
   muted: boolean;
   musicOn: boolean;
+  /* ---- economía premium (El Abismo) ---- */
+  diamonds: number;          // moneda premium
+  unlockedFrames: string[];  // marcos de carta desbloqueados
+  activeFrame: string | null; // marco equipado (cosmético)
+  relicsOwned: string[];     // reliquias "favoritas" del Relicario Hueco
+  seasonEnds: number;        // timestamp: fin de la temporada de marcos limitados (FOMO)
+  offerClaimedDate: string;  // fecha (YYYY-MM-DD) en que se reclamó la oferta diaria
+}
+
+export interface FrameDef {
+  id: string;
+  name: string;
+  desc: string;
+  price: number;           // en diamantes
+  icon: string;
+  accent: string;          // color del borde
+  glow: string;            // color del halo
+  anim?: 'flames' | 'embers' | 'frost' | 'none'; // animación del marco
+  limited?: boolean;       // marco de temporada (FOMO)
+}
+
+export interface DiamondPackDef {
+  id: string;
+  name: string;
+  diamonds: number;   // base
+  bonus: number;      // extra de regalo
+  priceUSD: string;   // etiqueta de precio
+  icon: string;
+  hue: number;
+  tag?: string;       // "Más popular", "Mejor valor"...
 }
 
 export interface PactDef {

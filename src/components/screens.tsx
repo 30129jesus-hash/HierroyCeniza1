@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMeta } from '../state/store';
-import { ACHIEVEMENTS, DUPE_GOLD, PACK_COST, PACTS, PLAYER_CARDS, RARITY_COLOR, RELIC_LOOKUP, SHOP_POOL_COMMON, SHOP_POOL_EPIC, SHOP_POOL_LEGENDARY, SHOP_POOL_RARE, STORY_LEVELS, cardById, pactById } from '../game/cards';
+import { ACHIEVEMENTS, DUPE_GOLD, PACK_COST, PACTS, PLAYER_CARDS, RARITY_COLOR, RELICS, RELIC_LOOKUP, SHOP_POOL_COMMON, SHOP_POOL_EPIC, SHOP_POOL_LEGENDARY, SHOP_POOL_RARE, STORY_LEVELS, cardById, pactById } from '../game/cards';
 import type { AchDef, CardDef, RelicDef } from '../game/types';
-import { challengeById, weeklyCounter } from '../game/challenges';
+import { DIAMOND_PACKS, DAILY_OFFER, FRAMES, SEASON_DAYS, frameById } from '../game/premium';
+import { challengeById, todayKey, weeklyCounter } from '../game/challenges';
 import { sfx } from '../game/audio';
 import CardView from './CardView';
 import { Sigil, RuneRing } from './icons';
@@ -53,6 +54,7 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
     { id: 'shop', label: 'Tienda', desc: 'Sobres de recluta y de guerra', icon: 'bag', hue: 130 },
     { id: 'collection', label: 'Colección', desc: `${Object.values(meta.collection).reduce((a, b) => a + b, 0)} cartas reunidas`, icon: 'cards', hue: 210 },
     { id: 'achievements', label: 'Logros', desc: `${meta.achievements.length} de ${ACHIEVEMENTS.length} hazañas`, icon: 'crown', hue: 48 },
+    { id: 'abismo', label: 'El Abismo', desc: `${meta.diamonds.toLocaleString()} diamantes · oferta diaria y cosméticos`, icon: 'gem', hue: 190 },
   ];
 
   return (
@@ -858,6 +860,256 @@ export function DeckScreen({ onBack }: { onBack: () => void }) {
           <p className="font-display text-xl text-gold-400 text-glow-gold">Mazo guardado — a la batalla</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ================= EL ABISMO (TIENDA PREMIUM) ================= */
+
+function useNow(ms = 1000): number {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), ms);
+    return () => clearInterval(id);
+  }, [ms]);
+  return now;
+}
+
+function fmtCountdown(msLeft: number): string {
+  if (msLeft <= 0) return '00:00:00';
+  const s = Math.floor(msLeft / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+const RELIC_PRICE = 150;
+
+export function PremiumScreen({ onBack }: { onBack: () => void }) {
+  const { meta, dispatch } = useMeta();
+  const now = useNow();
+  const [tab, setTab] = useState<'oferta' | 'diamantes' | 'cosmeticos' | 'relicario'>('oferta');
+  const [err, setErr] = useState(false);
+
+  const fail = () => { sfx.error(); setErr(true); setTimeout(() => setErr(false), 500); };
+
+  const midnight = useMemo(() => { const d = new Date(); d.setHours(24, 0, 0, 0); return d.getTime(); }, []);
+  const offerLeft = midnight - now;
+  const seasonLeft = meta.seasonEnds - now;
+  const offerTaken = meta.offerClaimedDate === todayKey();
+
+  const buyDiamonds = (amount: number) => {
+    sfx.unlock(); sfx.coin();
+    dispatch({ type: 'buyDiamonds', amount });
+  };
+
+  const claimOffer = () => {
+    sfx.unlock();
+    if (offerTaken || meta.diamonds < DAILY_OFFER.diamonds) { fail(); return; }
+    const r = Math.random();
+    const card = r < 0.1 ? pick(SHOP_POOL_LEGENDARY) : r < 0.4 ? pick(SHOP_POOL_EPIC) : pick(SHOP_POOL_RARE);
+    dispatch({ type: 'spendDiamonds', amount: DAILY_OFFER.diamonds });
+    dispatch({ type: 'claimOffer', date: todayKey(), card });
+    sfx.epic();
+  };
+
+  const unlockFrame = (id: string, price: number) => {
+    sfx.unlock();
+    if (meta.diamonds < price) { fail(); return; }
+    dispatch({ type: 'spendDiamonds', amount: price });
+    dispatch({ type: 'unlockFrame', id });
+    sfx.epic();
+  };
+
+  const equipFrame = (id: string | null) => { sfx.click(); dispatch({ type: 'setFrame', id }); };
+
+  const ownRelic = (id: string) => {
+    sfx.unlock();
+    if (meta.diamonds < RELIC_PRICE) { fail(); return; }
+    dispatch({ type: 'spendDiamonds', amount: RELIC_PRICE });
+    dispatch({ type: 'ownRelic', id });
+    sfx.epic();
+  };
+
+  const tabs = [
+    { id: 'oferta', label: 'Oferta Diaria', icon: 'bag' },
+    { id: 'diamantes', label: 'Diamantes', icon: 'gem' },
+    { id: 'cosmeticos', label: 'Cosméticos', icon: 'crown' },
+    { id: 'relicario', label: 'Relicario', icon: 'gem' },
+  ] as const;
+
+  return (
+    <div className="bg-arena min-h-screen relative">
+      <div className="bg-vignette absolute inset-0 pointer-events-none" />
+      <Embers n={10} />
+      <Header title="El Abismo" sub="Lo que el oro no compra, la gema lo reclama" onBack={onBack} />
+
+      {/* saldo de diamantes */}
+      <div className="relative z-10 flex justify-center -mt-2 mb-4">
+        <div className={`panel-dark px-6 py-2 flex items-center gap-2 ${err ? 'anim-shake' : ''}`} style={{ borderColor: 'rgba(111,232,255,0.45)' }}>
+          <Sigil icon="gem" className="w-5 h-5 text-frost-400" />
+          <span className="font-display text-2xl text-frost-400" style={{ textShadow: '0 0 10px rgba(111,232,255,0.6)' }}>{meta.diamonds.toLocaleString()}</span>
+          <span className="font-body text-[0.6rem] uppercase tracking-widest text-bone-500 ml-1">diamantes</span>
+        </div>
+      </div>
+
+      {/* pestañas */}
+      <div className="relative z-10 flex justify-center gap-2 px-4 flex-wrap mb-6">
+        {tabs.map((t) => (
+          <button key={t.id} onClick={() => { sfx.click(); setTab(t.id); }}
+            className={`btn-rune px-4 py-1.5 text-base flex items-center gap-1.5 border transition-colors ${tab === t.id ? 'text-bone-100' : 'text-bone-500'}`}
+            style={{ background: tab === t.id ? 'linear-gradient(160deg, #2b2138, #15101d)' : 'rgba(30,23,41,0.5)', borderColor: tab === t.id ? 'rgba(255,215,106,0.6)' : 'rgba(168,151,122,0.25)' }}>
+            <Sigil icon={t.icon} className="w-4 h-4" />{t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 pb-16">
+
+        {tab === 'oferta' && (
+          <div className="anim-slide-down">
+            <div className="panel-dark p-6 sm:p-8 text-center relative overflow-hidden" style={{ borderColor: 'rgba(255,215,106,0.5)' }}>
+              <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: 'radial-gradient(60% 80% at 50% 0%, rgba(255,215,106,0.35), transparent 70%)' }} />
+              <p className="font-body text-[0.62rem] uppercase tracking-[0.3em] text-gold-400 mb-1">Solo una vez al día</p>
+              <h3 className="font-display text-4xl text-bone-100 text-glow-gold">{DAILY_OFFER.name}</h3>
+              <p className="font-body italic text-bone-300/80 text-sm mt-2 max-w-md mx-auto">«{DAILY_OFFER.desc}»</p>
+              <div className="flex items-center justify-center gap-5 mt-5">
+                <div className="flex flex-col items-center gap-1">
+                  <span className="flex items-center gap-1.5 font-display text-3xl text-gold-400"><Sigil icon="coin" className="w-6 h-6" />{DAILY_OFFER.gold}</span>
+                  <span className="font-body text-[0.6rem] uppercase tracking-widest text-bone-500">oro</span>
+                </div>
+                <span className="font-display text-2xl text-bone-500">+</span>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="flex items-center gap-1.5 font-display text-3xl text-venom-400"><Sigil icon="cards" className="w-6 h-6" />1</span>
+                  <span className="font-body text-[0.6rem] uppercase tracking-widest text-bone-500">carta rara+</span>
+                </div>
+              </div>
+              <div className="mt-6 flex items-center justify-center gap-3">
+                <span className="font-body text-[0.62rem] uppercase tracking-widest text-bone-500">Se reinicia en</span>
+                <span className="font-display text-2xl text-blood-400 tabular-nums" style={{ textShadow: '0 0 10px rgba(224,47,69,0.6)' }}>{fmtCountdown(offerLeft)}</span>
+              </div>
+              <button onClick={claimOffer} disabled={offerTaken || meta.diamonds < DAILY_OFFER.diamonds}
+                className="btn-rune mt-5 px-8 py-2.5 text-xl font-bold text-bone-100 flex items-center gap-2 mx-auto"
+                style={{ background: offerTaken ? '#1e1729' : 'linear-gradient(160deg, #8e6a1f, #5c430f)', border: '1px solid rgba(232,182,76,0.5)', boxShadow: offerTaken ? 'none' : '0 0 18px rgba(232,182,76,0.35)' }}>
+                <Sigil icon="gem" className="w-5 h-5 text-frost-400" />
+                {offerTaken ? 'Caravana ya saqueada hoy' : `${DAILY_OFFER.diamonds} diamantes`}
+              </button>
+              {!offerTaken && meta.diamonds < DAILY_OFFER.diamonds && (
+                <p className="font-body text-[0.62rem] text-blood-400 mt-2">Diamantes insuficientes — visita la pestaña Diamantes</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === 'diamantes' && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {DIAMOND_PACKS.map((p, i) => {
+              const total = p.diamonds + p.bonus;
+              return (
+                <div key={p.id} className="panel-dark p-5 text-center relative anim-slide-down" style={{ animationDelay: `${i * 0.05}s`, borderColor: `hsl(${p.hue} 60% 45% / 0.5)` }}>
+                  {p.tag && (
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-0.5 font-body text-[0.55rem] uppercase tracking-widest text-ink-950" style={{ background: '#ffd76a' }}>{p.tag}</span>
+                  )}
+                  <div className="flex items-center justify-center gap-1.5" style={{ color: `hsl(${p.hue} 80% 62%)`, filter: `drop-shadow(0 0 8px hsl(${p.hue} 90% 55% / 0.7))` }}>
+                    <Sigil icon={p.icon} className="w-8 h-8" />
+                  </div>
+                  <p className="font-display text-xl text-bone-100 mt-2">{p.name}</p>
+                  <p className="font-display text-3xl text-frost-400 mt-1 flex items-center justify-center gap-1.5">
+                    <Sigil icon="gem" className="w-5 h-5" />{total.toLocaleString()}
+                  </p>
+                  {p.bonus > 0 && <p className="font-body text-[0.62rem] text-venom-400 mt-0.5">+{p.bonus} de regalo</p>}
+                  <button onClick={() => buyDiamonds(total)}
+                    className="btn-rune mt-3 px-6 py-1.5 text-lg font-bold text-bone-100 mx-auto"
+                    style={{ background: `linear-gradient(160deg, hsl(${p.hue} 45% 30%), hsl(${p.hue} 50% 16%))`, border: `1px solid hsl(${p.hue} 70% 50% / 0.6)` }}>
+                    {p.priceUSD}
+                  </button>
+                </div>
+              );
+            })}
+            <p className="sm:col-span-2 lg:col-span-3 font-body text-[0.62rem] italic text-bone-500 text-center">Demo sin pagos reales: cada compra acredita los diamantes al instante.</p>
+          </div>
+        )}
+
+        {tab === 'cosmeticos' && (
+          <div>
+            <p className="font-body text-center text-[0.7rem] text-bone-300/80 mb-1">Marcos de carta: puro estilo, cero ventaja. Equípalo y presúmelo en cada batalla.</p>
+            {seasonLeft > 0 && (
+              <p className="font-body text-center text-[0.62rem] uppercase tracking-widest text-blood-400 mb-5">
+                Temporada de marcos limitados termina en <b className="font-display text-base tabular-nums">{fmtCountdown(seasonLeft)}</b>
+              </p>
+            )}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {FRAMES.map((f, i) => {
+                const owned = meta.unlockedFrames.includes(f.id);
+                const active = meta.activeFrame === f.id;
+                const gone = f.limited && seasonLeft <= 0;
+                return (
+                  <div key={f.id} className={`panel-dark p-4 text-center anim-slide-down relative ${gone ? 'opacity-40 saturate-0' : ''}`} style={{ animationDelay: `${i * 0.05}s`, borderColor: `${f.accent}88` }}>
+                    {f.limited && !gone && (
+                      <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-0.5 font-body text-[0.55rem] uppercase tracking-widest text-ink-950" style={{ background: f.accent }}>Limitado</span>
+                    )}
+                    <div className="relative w-20 h-28 mx-auto mb-3">
+                      <div className={`absolute inset-0 ${f.anim === 'flames' ? 'anim-frame-flames' : f.anim === 'embers' ? 'anim-frame-embers' : f.anim === 'frost' ? 'anim-frame-frost' : ''}`}
+                        style={{ border: `2px solid ${f.accent}`, boxShadow: `0 0 16px ${f.glow}, inset 0 0 12px ${f.glow}`, background: 'linear-gradient(170deg, #1e1729, #0d0a12)' }} />
+                      <div className="absolute inset-0 flex items-center justify-center" style={{ color: f.accent, filter: `drop-shadow(0 0 6px ${f.glow})` }}>
+                        <Sigil icon={f.icon} className="w-8 h-8" />
+                      </div>
+                    </div>
+                    <p className="font-display text-lg" style={{ color: f.accent }}>{f.name}</p>
+                    <p className="font-body text-[0.62rem] text-bone-500 mt-1 min-h-10 leading-snug">{f.desc}</p>
+                    {active ? (
+                      <button onClick={() => equipFrame(null)} className="btn-rune mt-2 px-5 py-1.5 text-base text-gold-400 bg-ink-700 border border-gold-400/50">Equipado — quitar</button>
+                    ) : owned ? (
+                      <button onClick={() => equipFrame(f.id)} className="btn-rune mt-2 px-5 py-1.5 text-base text-bone-100 bg-ink-700 border border-bone-500/40">Equipar</button>
+                    ) : gone ? (
+                      <p className="font-body text-[0.62rem] uppercase tracking-widest text-bone-500 mt-3">Agotado esta temporada</p>
+                    ) : (
+                      <button onClick={() => unlockFrame(f.id, f.price)} disabled={meta.diamonds < f.price}
+                        className="btn-rune mt-2 px-5 py-1.5 text-base font-bold text-bone-100 flex items-center gap-1.5 mx-auto"
+                        style={{ background: meta.diamonds >= f.price ? 'linear-gradient(160deg, #155e6e, #0b3a45)' : '#1e1729', border: '1px solid rgba(111,232,255,0.5)' }}>
+                        <Sigil icon="gem" className="w-4 h-4 text-frost-400" />{f.price}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {tab === 'relicario' && (
+          <div>
+            <p className="font-body text-center text-[0.7rem] text-bone-300/80 mb-5">
+              El Relicario Hueco: guarda tus reliquias favoritas tras un marco dorado. Aparecerán con prioridad en tus cacerías de Supervivencia.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {RELICS.map((r, i) => {
+                const owned = meta.relicsOwned.includes(r.id);
+                return (
+                  <div key={r.id} className={`panel-dark p-4 text-center anim-slide-down ${owned ? '' : 'opacity-70'}`} style={{ animationDelay: `${i * 0.04}s`, borderColor: owned ? 'rgba(255,215,106,0.6)' : 'rgba(168,151,122,0.25)' }}>
+                    <div className={`relative w-14 h-14 mx-auto mb-2 flex items-center justify-center ${owned ? 'anim-glow' : ''}`}
+                      style={{ border: owned ? '2px solid #ffd76a' : '1px dashed rgba(168,151,122,0.4)', boxShadow: owned ? '0 0 14px rgba(255,215,106,0.5), inset 0 0 10px rgba(255,215,106,0.25)' : 'none', background: owned ? 'radial-gradient(70% 70% at 50% 35%, rgba(255,215,106,0.15), transparent 75%)' : 'transparent' }}>
+                      <span style={{ color: owned ? `hsl(${r.hue} 80% 62%)` : 'rgba(168,151,122,0.4)', filter: owned ? `drop-shadow(0 0 6px hsl(${r.hue} 90% 55% / 0.7))` : 'none' }}>
+                        <Sigil icon={r.icon} className="w-7 h-7" />
+                      </span>
+                    </div>
+                    <p className={`font-display text-base leading-tight ${owned ? 'text-gold-400' : 'text-bone-300'}`}>{r.name}</p>
+                    <p className="font-body text-[0.58rem] text-bone-500 mt-1 min-h-8 leading-snug">{r.desc}</p>
+                    {owned ? (
+                      <p className="font-body text-[0.6rem] uppercase tracking-widest text-gold-400 mt-2">En exhibición</p>
+                    ) : (
+                      <button onClick={() => ownRelic(r.id)} disabled={meta.diamonds < RELIC_PRICE}
+                        className="btn-rune mt-2 px-4 py-1 text-sm font-bold text-bone-100 flex items-center gap-1 mx-auto"
+                        style={{ background: meta.diamonds >= RELIC_PRICE ? 'linear-gradient(160deg, #155e6e, #0b3a45)' : '#1e1729', border: '1px solid rgba(111,232,255,0.5)' }}>
+                        <Sigil icon="gem" className="w-3.5 h-3.5 text-frost-400" />{RELIC_PRICE}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

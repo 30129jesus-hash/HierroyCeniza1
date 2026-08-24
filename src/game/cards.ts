@@ -364,9 +364,16 @@ export const relicById = (id: string): RelicDef => RELICS.find((r) => r.id === i
 
 export const RELIC_LOOKUP: Record<string, RelicDef> = Object.fromEntries(RELICS.map((r) => [r.id, r]));
 
-export function randomRelicOptions(exclude: string[], n = 3): RelicDef[] {
+export function randomRelicOptions(exclude: string[], n = 3, favorites: string[] = []): RelicDef[] {
   const pool = RELICS.filter((r) => !exclude.includes(r.id));
   const out: RelicDef[] = [];
+  // El Relicario Hueco: una reliquia "favorita" (en exhibición) tiene aparición garantizada.
+  const favPool = pool.filter((r) => favorites.includes(r.id));
+  if (favPool.length > 0 && out.length < n) {
+    const f = favPool[Math.floor(Math.random() * favPool.length)];
+    out.push(f);
+    pool.splice(pool.indexOf(f), 1);
+  }
   while (out.length < n && pool.length > 0) {
     const i = Math.floor(Math.random() * pool.length);
     out.push(pool.splice(i, 1)[0]);

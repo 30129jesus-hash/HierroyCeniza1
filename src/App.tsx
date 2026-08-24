@@ -4,7 +4,7 @@ import type { BattleConfig, MetaState, Side } from './game/types';
 import { ALL_CARDS, RELICS, STARTER_COLLECTION, STORY_LEVELS, achById, cardById, pactById, randomRelicOptions, survivalDeck, vsDeck } from './game/cards';
 import { resolveChallenges, challengeById, type BattleOutcome } from './game/challenges';
 import BattleScreen, { type BattleStats } from './components/BattleScreen';
-import { AchievementsScreen, ChallengesScreen, CollectionScreen, DeckScreen, RelicPicker, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
+import { AchievementsScreen, ChallengesScreen, CollectionScreen, DeckScreen, PremiumScreen, RelicPicker, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
 import { Sigil } from './components/icons';
 import { sfx } from './game/audio';
 
@@ -16,6 +16,7 @@ type Screen =
   | { name: 'arsenal' }
   | { name: 'achievements' }
   | { name: 'challenges' }
+  | { name: 'abismo' }
   | { name: 'shop' }
   | { name: 'collection' }
   | { name: 'battle' };
@@ -275,7 +276,7 @@ function Inner() {
           next: () => {
             setReward(null);
             if (!canPick) { startSurvival(newStreak, runRelics); return; }
-            setRelicPick({ options: randomRelicOptions(runRelics), nextStreak: newStreak });
+            setRelicPick({ options: randomRelicOptions(runRelics, 3, meta.relicsOwned), nextStreak: newStreak });
           },
           nextLabel: canPick ? 'Elegir reliquia' : 'Siguiente cacería',
         });
@@ -336,6 +337,7 @@ function Inner() {
       {screen.name === 'arsenal' && <DeckScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'achievements' && <AchievementsScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'challenges' && <ChallengesScreen onBack={() => setScreen({ name: 'title' })} />}
+      {screen.name === 'abismo' && <PremiumScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'shop' && <ShopScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'collection' && <CollectionScreen onBack={() => setScreen({ name: 'title' })} />}
       {screen.name === 'battle' && battleCtx && (
