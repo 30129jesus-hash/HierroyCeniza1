@@ -5,15 +5,17 @@ export type Rarity = 'común' | 'rara' | 'épica' | 'legendaria';
 export type SpellTarget =
   | 'enemyAny'      // unidad enemiga o héroe enemigo
   | 'enemyUnits'    // solo unidades enemigas
+  | 'enemyHero'     // solo héroe enemigo
   | 'allyAny'       // unidad aliada o héroe propio
   | 'allyUnit'      // solo unidad aliada
   | 'allEnemyUnits' // AoE
-  | 'allAllies';    // apoyo en masa
+  | 'allAllies';    // apoyo en masa / sin selección
 
 export type SpellSchool =
   | 'fire' | 'ice' | 'poison' | 'heal'
   | 'buffAtk' | 'buffDef' | 'buffHp'
-  | 'aoe' | 'teamBuff';
+  | 'aoe' | 'teamBuff'
+  | 'ashRain' | 'spikeShield' | 'shadowDagger' | 'warCry' | 'forbidden' | 'destinyArrow';
 
 export interface SpellEffect {
   school: SpellSchool;
@@ -48,6 +50,9 @@ export interface CardDef {
   pierce?: boolean;  // perforación: ignora la armadura
   swift?: boolean;   // veloz: ataca la ronda que se despliega
   thorns?: number;   // espinas: daño al ser atacada
+  poisonAtk?: number;  // veneno que aplica al golpear en combate
+  freezeAtk?: boolean; // congela al objetivo al golpear en combate
+  onDeath?: { kind: 'poisonKiller' | 'summonSkeletons' | 'healHero'; amount: number };
   onPlay?: OnPlay;
   spell?: SpellEffect;
   tags: string[];    // facción: humanos, elfos, lobos...
@@ -71,6 +76,11 @@ export interface UnitInst {
   pierce: boolean;
   swift: boolean;
   thorns: number;
+  poisonAtk: number;   // veneno que aplica al golpear
+  freezeAtk: boolean;  // congela al golpear
+  tempAtk: number;     // ATK temporal (se limpia al fin de ronda)
+  hasEscudo: boolean;  // ya tiene Escudo de Espinas (no apila)
+  lastHitBy: { side: Side; lane: number } | null; // quién asestó el último golpe
   ready: boolean;    // puede atacar esta fase
   fresh: boolean;    // desplegada esta ronda: no ataca
 }

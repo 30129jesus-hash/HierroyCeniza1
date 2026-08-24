@@ -8,7 +8,10 @@ const u = (
 ): CardDef => ({
   id, name, side, kind: 'unit', cost, atk, hp, def: extra?.def ?? 0, rarity, icon, hue,
   text: extra?.def ? `${text} · Defensa ${extra.def}` : text, quote, tags,
-  vamp: extra?.vamp, ranged: extra?.ranged, onPlay: extra?.onPlay,
+  vamp: extra?.vamp, ranged: extra?.ranged, taunt: extra?.taunt, pierce: extra?.pierce,
+  swift: extra?.swift, thorns: extra?.thorns,
+  poisonAtk: extra?.poisonAtk, freezeAtk: extra?.freezeAtk, onDeath: extra?.onDeath,
+  onPlay: extra?.onPlay,
 });
 
 const s = (
@@ -96,12 +99,41 @@ export const PLAYER_CARDS: CardDef[] = [
   s('p_roble', 'Corazón de Roble', 'player', 3, 'común', 'heart', 140,
     ['mejoras'], { school: 'buffHp', amount: 3, target: 'allyUnit' },
     'Una unidad aliada gana +3 de Vida (y se cura 3).', '«Raíces en vez de costillas.»'),
-  s('p_grito', 'Grito de Guerra', 'player', 3, 'rara', 'banner', 40,
+  s('p_grito', 'Grito de los Caídos', 'player', 3, 'rara', 'banner', 40,
     ['apoyo'], { school: 'teamBuff', amount: 1, target: 'allAllies' },
     'Todas tus unidades ganan +1 de ATK y +1 de Vida.', '«¡Por los caídos!»'),
   s('p_lluvia', 'Lluvia de Fuego', 'player', 5, 'épica', 'flask', 14,
     ['apoyo'], { school: 'aoe', amount: 2, target: 'allEnemyUnits' },
     '2 de daño a TODAS las unidades enemigas. Ignora la armadura.', '«El cielo también odia.»'),
+
+  // ---- Cartas especiales (solicitadas) ----
+  s('p_ceniza', 'Lluvia de Cenizas', 'player', 4, 'épica', 'fire', 14,
+    ['apoyo'], { school: 'ashRain', amount: 3, amount2: 1, target: 'allEnemyUnits' },
+    '3 de daño de fuego a TODAS las unidades enemigas y 1 al héroe enemigo. Ignora la armadura.', '«Lo que arde, vuelve.»'),
+  u('p_cadaver', 'Cadáver Renacido', 'player', 1, 1, 1, 'común', 'skull', 100,
+    ['nomuerto'], 'Al morir: envenena 2 a la unidad que lo mató.', '«La muerte es solo el principio.»',
+    { onDeath: { kind: 'poisonKiller', amount: 2 } }),
+  s('p_escudoespinas', 'Escudo de Espinas', 'player', 3, 'rara', 'shield', 215,
+    ['mejoras'], { school: 'spikeShield', amount: 3, amount2: 2, target: 'allyUnit' },
+    'Una unidad aliada gana +3 de Armadura y +2 de Espinas. Solo uno por unidad.', '«Tócame y sangra.»'),
+  s('p_flechadestino', 'Flecha del Destino', 'player', 5, 'épica', 'bow', 260,
+    ['apoyo'], { school: 'destinyArrow', amount: 4, amount2: 8, target: 'enemyHero' },
+    '4 de daño al héroe enemigo. Si le quedan 10 de vida o menos, inflige 8 en su lugar.', '«El hilo ya está cortado.»'),
+  s('p_dagasombras', 'Daga de las Sombras', 'player', 1, 'común', 'dagger', 290,
+    ['mejoras'], { school: 'shadowDagger', amount: 3, target: 'allyUnit' },
+    'Una unidad aliada gana +3 de ATK hasta el final de la ronda.', '«Un filo que no existe.»'),
+  s('p_gritoveloz', 'Grito de Guerra', 'player', 4, 'épica', 'banner', 40,
+    ['apoyo'], { school: 'warCry', amount: 1, target: 'allAllies' },
+    'Todas tus unidades ganan Veloz y +1 de ATK. Atacan por sorpresa.', '«¡AHORA!»'),
+  s('p_pergamino', 'Pergamino Prohibido', 'player', 2, 'común', 'book', 280,
+    ['apoyo'], { school: 'forbidden', amount: 2, amount2: 2, target: 'allAllies' },
+    'Roba 2 cartas. Tu héroe recibe 2 de daño.', '«El conocimiento cuesta sangre.»'),
+  u('p_golem', 'Golem de Púrpura', 'player', 5, 4, 6, 'épica', 'fist', 275,
+    ['constructos'], 'Al morir: invoca dos Esqueletos 1/1 en las líneas adyacentes.', '«La piedra recuerda.»',
+    { onDeath: { kind: 'summonSkeletons', amount: 2 } }),
+  u('p_familiar', 'Familiar Atado', 'player', 1, 0, 3, 'común', 'paw', 320,
+    ['espiritus'], 'Provocación. Al morir: cura 5 a tu héroe.', '«Su último acto es protegerte.»',
+    { taunt: true, onDeath: { kind: 'healHero', amount: 5 } }),
 ];
 
 /* ================= CARTAS ENEMIGAS (IA) ================= */
@@ -160,6 +192,32 @@ export const ENEMY_CARDS: CardDef[] = [
   s('e_mordida', 'Mordida Infecta', 'enemy', 2, 'común', 'skull', 100, ['serpientes'], { school: 'poison', amount: 2, amount2: 3, target: 'enemyUnits' }, 'Envenena a una de tus unidades: 2 de daño por ronda (3 rondas).'),
   s('e_vil', 'Bola de Fuego Vil', 'enemy', 3, 'rara', 'flask', 320, ['demonios'], { school: 'fire', amount: 4, target: 'enemyAny' }, '4 de daño a una unidad tuya o a tu héroe. Ignora armadura.'),
   s('e_fria', 'Sangre Fría', 'enemy', 2, 'común', 'heart', 200, ['vampiros'], { school: 'heal', amount: 4, target: 'allyAny' }, 'Cura 4 a una unidad enemiga o a su héroe.'),
+
+  // ---- Criaturas especiales (solo IA) ----
+  u('e_parasito', 'Parásito de Almas', 'enemy', 5, 3, 5, 'épica', 'bat', 285, ['espiritus'],
+    'A distancia y vampirismo: drena a tu héroe desde lejos.', '«Se alimenta de lo que más quieres.»',
+    { ranged: true, vamp: true }),
+  u('e_grifo', 'Grifo de las Tormentas', 'enemy', 4, 5, 2, 'rara', 'feather', 210, ['aves'],
+    'Veloz y perforación: cae en picado ignorando la armadura.', '«El cielo ruge primero.»',
+    { swift: true, pierce: true }),
+  u('e_tejedor', 'Tejedor Carnicero', 'enemy', 5, 3, 7, 'épica', 'skull', 100, ['bestias'],
+    'Provocación, espinas 2 y veneno al morder. Una trampa de ocho patas.', undefined,
+    { taunt: true, thorns: 2, poisonAtk: 2 }),
+  u('e_serpiente_petr', 'Serpiente Petrificante', 'enemy', 6, 4, 6, 'épica', 'snake', 130, ['serpientes'],
+    'Su mirada congela y su veneno remata: envenena 3 y petrifica al impactar.', undefined,
+    { poisonAtk: 3, freezeAtk: true }),
+
+  // ---- Versiones enemigas de cartas duales ----
+  u('e_cadaver', 'Cadáver Renacido', 'enemy', 1, 1, 1, 'común', 'skull', 100, ['nomuerto'],
+    'Al morir: envenena 2 a la unidad que lo mató.', undefined,
+    { onDeath: { kind: 'poisonKiller', amount: 2 } }),
+  s('e_dagasombras', 'Daga de las Sombras', 'enemy', 1, 'común', 'dagger', 290, ['mejoras'],
+    { school: 'shadowDagger', amount: 3, target: 'allyUnit' }, 'Una unidad enemiga gana +3 de ATK hasta el final de la ronda.'),
+  u('e_golem', 'Golem de Púrpura', 'enemy', 5, 4, 6, 'épica', 'fist', 275, ['constructos'],
+    'Al morir: invoca dos Esqueletos 1/1 en las líneas adyacentes.', undefined,
+    { onDeath: { kind: 'summonSkeletons', amount: 2 } }),
+  s('e_gritoabismo', 'Grito del Abismo', 'enemy', 4, 'épica', 'demon', 300, ['demonios'],
+    { school: 'warCry', amount: 1, target: 'allAllies' }, 'Todas las unidades enemigas ganan Veloz y +1 de ATK.'),
 ];
 
 /* ================= ÍNDICES Y MAZOS ================= */
@@ -207,14 +265,14 @@ export const STORY_LEVELS: StoryLevel[] = [
     n: 2, title: 'Bosque Aullante', place: 'Linde de Grauvale',
     desc: 'Los lobos bajan de las colinas hambrientos, y algo silba entre la maleza.',
     hero: 'Colmillo Gris', heroIcon: 'wolf', hue: 215,
-    deck: ['e_lobo','e_lobo','e_lobo','e_alfa','e_alfa','e_serp1','e_serp1','e_serp2','e_bestia','e_aullido','e_aullido','e_mordida','e_lobo','e_alfa','e_serp1','e_bestia'],
+    deck: ['e_lobo','e_lobo','e_lobo','e_alfa','e_alfa','e_serp1','e_serp1','e_serp2','e_serpiente_petr','e_bestia','e_aullido','e_aullido','e_mordida','e_lobo','e_alfa','e_serp1','e_bestia','e_serpiente_petr'],
     bonus: 0, reward: 65,
   },
   {
     n: 3, title: 'Horda Bestial', place: 'Páramos Rojos',
     desc: 'Hombres bestia y desertores marchan juntos bajo una luna enferma.',
     hero: 'Urzak, Capataz', heroIcon: 'claw', hue: 25,
-    deck: ['e_bestia','e_bestia','e_bruto','e_alfa','e_lobo','e_lobo','e_desertor','e_traidor','e_bandido2','e_aullido','e_piel','e_vil','e_bestia','e_bruto','e_traidor','e_alfa'],
+    deck: ['e_bestia','e_bestia','e_bruto','e_tejedor','e_alfa','e_lobo','e_lobo','e_desertor','e_traidor','e_bandido2','e_cadaver','e_aullido','e_piel','e_vil','e_bestia','e_bruto','e_traidor','e_tejedor'],
     bonus: 1, reward: 75,
   },
   {
@@ -273,6 +331,7 @@ export const STARTER_COLLECTION: Record<string, number> = {
   p_escudero: 2, p_cazadora: 2, p_soldado: 2, p_gatuna: 2, p_cuerno: 1,
   p_minero: 2, p_arquero: 1, p_licia: 1, p_caballero: 1, p_rompecraneos: 1,
   p_fuego1: 2, p_hielo: 1, p_veneno: 2, p_vida: 2, p_furia: 1, p_runa: 1, p_roble: 1,
+  p_cadaver: 1, p_dagasombras: 1, p_familiar: 1,
 };
 
 export const SHOP_POOL_COMMON = PLAYER_CARDS.filter((c) => c.rarity === 'común').map((c) => c.id);

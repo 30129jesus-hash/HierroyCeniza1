@@ -102,6 +102,8 @@ function makeUnit(s: BattleState, def: CardDef, side: Side): UnitInst {
     vamp: !!def.vamp,
     ranged: !!def.ranged, taunt: !!def.taunt, pierce: !!def.pierce,
     swift: !!def.swift, thorns: def.thorns ?? 0,
+    poisonAtk: def.poisonAtk ?? 0, freezeAtk: !!def.freezeAtk,
+    tempAtk: 0, hasEscudo: false, lastHitBy: null,
     ready: false, fresh: true,
   };
 }
@@ -148,6 +150,59 @@ function killUnit(s: BattleState, side: Side, lane: number, events: BattleEvent[
     log(s, `${u.def.name} ha caído.`, 'good');
   } else {
     log(s, `Tu ${u.def.name} ha caído.`, 'bad');
+  }
+  triggerOnDeath(s, side, lane, u, events);
+}
+
+/* Token: esqueleto 1/1 invocado por el Golem de Púrpura. */
+const SKELETON_DEF: CardDef = {
+  id: 'token_esqueleto', name: 'Esqueleto', side: 'player', kind: 'unit', cost: 0,
+  atk: 1, hp: 1, def: 0, rarity: 'común', icon: 'skull', hue: 40,
+  text: 'Huesos que se niegan a descansar.', tags: ['nomuerto'],
+};
+
+function spawnSkeleton(s: BattleState, side: Side): UnitInst {
+  s.uidSeq += 1;
+  return {
+    uid: s.uidSeq, def: SKELETON_DEF, atk: 1, hp: 1, maxHp: 1, defv: 0,
+    frozen: 0, poison: 0, poisonT: 0, vamp: false,
+    ranged: false, taunt: false, pierce: false, swift: false, thorns: 0,
+    poisonAtk: 0, freezeAtk: false, tempAtk: 0, hasEscudo: false, lastHitBy: null,
+    ready: false, fresh: true,
+  };
+}
+
+function triggerOnDeath(s: BattleState, side: Side, lane: number, u: UnitInst, events: BattleEvent[]) {
+  const od = u.def.onDeath;
+  if (!od) return;
+  switch (od.kind) {
+    case 'poisonKiller': {
+      const kb = u.lastHitBy;
+      if (kb && kb.side !== side) {
+        const killer = s.units[slotOf(kb.side, kb.lane)];
+        if (killer) {
+          killer.poison = Math.max(killer.poison, od.amount);
+          killer.poisonT = Math.max(killer.poisonT, 3);
+          events.push({ t: 'poisonApply', side: kb.side, lane: kb.lane });
+          log(s, `El cadáver de ${u.def.name} envenena a ${killer.def.name}.`, side === 'player' ? 'good' : 'bad');
+        }
+      }
+      break;
+    }
+    case 'summonSkeletons': {
+      const lanes = [lane - 1, lane + 1].filter((l) => l >= 0 && l < 3 && !s.units[slotOf(side, l)]);
+      for (const l of lanes) {
+        const skel = spawnSkeleton(s, side);
+        s.units[slotOf(side, l)] = skel;
+        events.push({ t: 'summon', side, lane: l, uid: skel.uid });
+      }
+      if (lanes.length > 0) log(s, `De ${u.def.name} emergen ${lanes.length} esqueleto${lanes.length > 1 ? 's' : ''}.`, side === 'player' ? 'good' : 'bad');
+      break;
+    }
+    case 'healHero': {
+      healHero(s, side, od.amount, events);
+      break;
+    }
   }
 }
 
@@ -271,6 +326,60 @@ function castSpell(s: BattleState, side: Side, card: CardDef, t: Target, events:
       }
       break;
     }
+    case 'ashRain': {
+      log(s, `${name}: ceniza ardiente sobre el campo.`, side === 'player' ? 'good' : 'bad');
+      const foe = opp(side);
+      for (let l = 0; l < 3; l++) if (s.units[slotOf(foe, l)]) armorStrike(s, foe, l, sp.amount, events, 'fire', true);
+      damageHero(s, foe, sp.amount2 ?? 1, events);
+      break;
+    }
+    case 'spikeShield': {
+      if (t.kind === 'lane') {
+        const u = atLane(t.side, t.lane);
+        if (u && !u.hasEscudo) {
+          u.defv += sp.amount; u.thorns += (sp.amount2 ?? 2); u.hasEscudo = true;
+          events.push({ t: 'buff', side: t.side, lane: t.lane, label: `+${sp.amount} DEF · ESPINAS` });
+          log(s, `${u.def.name} queda erizado de espinas.`, side === 'player' ? 'good' : 'bad');
+        }
+      }
+      break;
+    }
+    case 'shadowDagger': {
+      if (t.kind === 'lane') {
+        const u = atLane(t.side, t.lane);
+        if (u) {
+          u.atk += sp.amount; u.tempAtk += sp.amount;
+          events.push({ t: 'buff', side: t.side, lane: t.lane, label: `+${sp.amount} ATK` });
+          log(s, `${u.def.name} gana +${sp.amount} de ATK hasta fin de ronda.`, side === 'player' ? 'good' : 'bad');
+        }
+      }
+      break;
+    }
+    case 'warCry': {
+      log(s, `${name}: ¡todas tus unidades se vuelven veloces!`, side === 'player' ? 'good' : 'bad');
+      for (let l = 0; l < 3; l++) {
+        const u = s.units[slotOf(side, l)];
+        if (u) {
+          u.swift = true; u.atk += sp.amount;
+          events.push({ t: 'buff', side, lane: l, label: `VELOZ +${sp.amount}` });
+        }
+      }
+      break;
+    }
+    case 'forbidden': {
+      log(s, `${name}: robas ${sp.amount} cartas, pero pagas con sangre.`, side === 'player' ? 'good' : 'bad');
+      draw(s, side, sp.amount);
+      events.push({ t: 'draw', side });
+      damageHero(s, side, sp.amount2 ?? 2, events);
+      break;
+    }
+    case 'destinyArrow': {
+      const foe = opp(side);
+      const dmg = s.heroHp[foe] <= 10 ? (sp.amount2 ?? 8) : sp.amount;
+      log(s, `${name}: el destino reclama ${dmg} de daño.`, side === 'player' ? 'good' : 'bad');
+      damageHero(s, foe, dmg, events);
+      break;
+    }
   }
 }
 
@@ -347,12 +456,20 @@ export function validTargets(s: BattleState, side: Side, card: CardDef): Target[
     case 'enemyUnits':
       for (let l = 0; l < 3; l++) if (s.units[slotOf(foe, l)]) t.push({ kind: 'lane', side: foe, lane: l });
       break;
+    case 'enemyHero':
+      t.push({ kind: 'hero', side: foe });
+      break;
     case 'allyAny':
       for (let l = 0; l < 3; l++) if (s.units[slotOf(side, l)]) t.push({ kind: 'lane', side, lane: l });
       t.push({ kind: 'hero', side });
       break;
     case 'allyUnit':
-      for (let l = 0; l < 3; l++) if (s.units[slotOf(side, l)]) t.push({ kind: 'lane', side, lane: l });
+      for (let l = 0; l < 3; l++) {
+        const u = s.units[slotOf(side, l)];
+        if (!u) continue;
+        if (sp.school === 'spikeShield' && u.hasEscudo) continue; // Escudo de Espinas: solo uno por unidad
+        t.push({ kind: 'lane', side, lane: l });
+      }
       break;
     case 'allEnemyUnits':
     case 'allAllies':
@@ -491,7 +608,23 @@ export function performAttack(prev: BattleState, side: Side, attackerSlot: numbe
 
   const defender = s.units[slotOf(foe, target.lane)];
   if (!defender) return { state: prev, events: [] };
+  // Rastreamos quién asesta cada golpe (para "al morir" del Cadáver Renacido).
+  defender.lastHitBy = { side, lane };
+  attacker.lastHitBy = { side: foe, lane: target.lane };
   const hpToDef = armorStrike(s, foe, target.lane, attacker.atk, events, 'hit', attacker.pierce);
+  // Veneno / congelación al impactar (Tejedor, Serpiente Petrificante).
+  const defAfter = s.units[slotOf(foe, target.lane)];
+  if (defAfter && attacker.poisonAtk > 0) {
+    defAfter.poison = Math.max(defAfter.poison, attacker.poisonAtk);
+    defAfter.poisonT = Math.max(defAfter.poisonT, 3);
+    events.push({ t: 'poisonApply', side: foe, lane: target.lane });
+    log(s, `${defAfter.def.name} queda envenenado.`, side === 'player' ? 'good' : 'bad');
+  }
+  if (defAfter && attacker.freezeAtk && defAfter.frozen === 0) {
+    defAfter.frozen = 1;
+    events.push({ t: 'freeze', side: foe, lane: target.lane });
+    log(s, `${defAfter.def.name} queda petrificado.`, side === 'player' ? 'good' : 'bad');
+  }
   const hpToAtt = armorStrike(s, side, lane, defender.atk, events);
   log(s, side === 'player'
     ? `${attacker.def.name} ataca a ${defender.def.name}${attacker.pierce ? ' (perforación)' : ''}.`
@@ -592,6 +725,38 @@ export function aiPlan(s: BattleState): AiAction[] {
             if (count >= 2) consider(i, { handIdx: i, target: null }, 3 + count * 2.2);
             break;
           }
+          case 'warCry': {
+            const own = [3, 4, 5].filter((sl) => units[sl]).length;
+            const fresh = [3, 4, 5].filter((sl) => units[sl] && units[sl]!.fresh).length;
+            if (own >= 2 || (own >= 1 && fresh >= 1)) consider(i, { handIdx: i, target: null }, 3.5 + own * 2 + fresh * 1.5);
+            break;
+          }
+          case 'shadowDagger': {
+            const own = [3, 4, 5].filter((sl) => units[sl] && !units[sl]!.fresh).sort((a, b) => units[b]!.atk - units[a]!.atk)[0];
+            if (own !== undefined) consider(i, { handIdx: i, target: { kind: 'lane', side: 'enemy', lane: laneOf(own) } }, 3 + units[own]!.atk * 0.7);
+            break;
+          }
+          case 'ashRain': {
+            const count = [0, 1, 2].filter((l) => units[l]).length;
+            if (count >= 2) consider(i, { handIdx: i, target: null }, 4 + count * 2.2);
+            break;
+          }
+          case 'destinyArrow': {
+            const php = s.heroHp.player;
+            const dmg = php <= 10 ? (sp.amount2 ?? 8) : sp.amount;
+            if (dmg >= php) consider(i, { handIdx: i, target: null }, 50);
+            else consider(i, { handIdx: i, target: null }, 3 + dmg * 0.6);
+            break;
+          }
+          case 'spikeShield': {
+            const own = [3, 4, 5].filter((sl) => units[sl] && !units[sl]!.hasEscudo && (units[sl]!.taunt || units[sl]!.hp >= 4)).sort((a, b) => units[b]!.hp - units[a]!.hp)[0];
+            if (own !== undefined) consider(i, { handIdx: i, target: { kind: 'lane', side: 'enemy', lane: laneOf(own) } }, 3.5 + units[own]!.hp * 0.3);
+            break;
+          }
+          case 'forbidden': {
+            if (s.heroHp.enemy > 8 && s.hands.enemy.length <= 4) consider(i, { handIdx: i, target: null }, 3.5);
+            break;
+          }
         }
       }
     }
@@ -608,7 +773,9 @@ export function aiPlan(s: BattleState): AiAction[] {
         uid: 999, def: card, atk: (card.atk ?? 0) + bonus, hp: (card.hp ?? 0) + bonus,
         maxHp: (card.hp ?? 0) + bonus, defv: card.def ?? 0, frozen: 0, poison: 0, poisonT: 0,
         vamp: !!card.vamp, ranged: !!card.ranged, taunt: !!card.taunt, pierce: !!card.pierce,
-        swift: !!card.swift, thorns: card.thorns ?? 0, ready: false, fresh: true,
+        swift: !!card.swift, thorns: card.thorns ?? 0,
+        poisonAtk: card.poisonAtk ?? 0, freezeAtk: !!card.freezeAtk,
+        tempAtk: 0, hasEscudo: false, lastHitBy: null, ready: false, fresh: true,
       };
     }
     if (card.kind === 'spell' && card.spell?.school === 'fire' && chosen.action.target?.kind === 'lane') {
@@ -710,12 +877,13 @@ export function endRound(prev: BattleState): PlayResult {
     }
   }
 
-  // congelación y fatiga de invocación
+  // congelación, fatiga de invocación y limpieza de buffs temporales
   s.units.forEach((u) => {
     if (u) {
       u.frozen = Math.max(0, u.frozen - 1);
       u.fresh = false;
       u.ready = false;
+      if (u.tempAtk > 0) { u.atk = Math.max(0, u.atk - u.tempAtk); u.tempAtk = 0; }
     }
   });
 
