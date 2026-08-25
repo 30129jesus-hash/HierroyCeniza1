@@ -43,13 +43,14 @@ export const PLAYER_CARDS: CardDef[] = [
 
   // ---- Elfos ----
   u('p_arquero', 'Arquero del Bosque', 'player', 2, 2, 3, 'rara', 'bow', 130,
-    ['elfos'], 'Grito de batalla: 2 de daño a una unidad enemiga al azar.', '«El bosque siempre ve.»',
+    ['elfos'], 'Disparo Certero: 2 de daño a una unidad enemiga al azar.', '«El bosque siempre ve.»',
     { onPlay: { kind: 'damageRandom', amount: 2 }, ranged: true }),
   u('p_elfalunar', 'Elfa Lunar', 'player', 3, 3, 3, 'épica', 'moon', 260,
     ['elfos'], 'Grito de batalla: congela 1 ronda a la unidad enemiga con más ATK.', '«Duerme bajo la luna pálida.»',
     { onPlay: { kind: 'freezeRandom', amount: 1 }, ranged: true }),
   u('p_guardabosques', 'Guardabosques Élfico', 'player', 4, 4, 5, 'rara', 'leaf', 140,
-    ['elfos'], 'Centinela de los claros quemados.', '«Cada ceniza fue una hoja.»'),
+    ['elfos'], 'A distancia: vigila los claros quemados y puede atacar al héroe.', '«Cada ceniza fue una hoja.»',
+    { ranged: true }),
 
   // ---- Semihumanos ----
   u('p_gatuna', 'Gatuna Sombría', 'player', 1, 1, 2, 'común', 'paw', 300,
