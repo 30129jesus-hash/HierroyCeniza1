@@ -162,6 +162,17 @@ body {
 .anim-lunge-down { animation: lungeDown 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both; position: relative; z-index: 20; }
 .anim-drip { animation: dripDown 2.2s ease-in infinite; }
 
+@keyframes sheenSweep {
+  0% { background-position: -180% 0; }
+  100% { background-position: 280% 0; }
+}
+.anim-sheen {
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 235, 170, 0.28) 48%, rgba(255, 215, 106, 0.14) 52%, transparent 62%);
+  background-size: 250% 100%;
+  animation: sheenSweep 2.6s linear infinite;
+  mix-blend-mode: screen;
+}
+
 /* marcos de carta animados (cosméticos) */
 @keyframes frameFlames { 0%, 100% { filter: hue-rotate(0deg) brightness(1); opacity: 0.85; } 50% { filter: hue-rotate(-28deg) brightness(1.5); opacity: 1; } }
 @keyframes frameEmbers { 0%, 100% { filter: brightness(1) saturate(1); opacity: 0.75; } 50% { filter: brightness(1.6) saturate(1.4); opacity: 1; } }

@@ -415,17 +415,21 @@ function triggerOnPlay(s: BattleState, side: Side, card: CardDef, lane: number, 
       break;
     }
     case 'buffAllDef': {
+      let hit = 0;
       for (let l = 0; l < 3; l++) {
         const u = s.units[slotOf(side, l)];
-        if (u && !(l === lane)) { u.defv += op.amount; events.push({ t: 'buff', side, lane: l, label: `+${op.amount} DEF` }); }
+        if (u && !(l === lane)) { u.defv += op.amount; events.push({ t: 'buff', side, lane: l, label: `+${op.amount} DEF` }); hit++; }
       }
+      log(s, `${card.name} forja +${op.amount} de Armadura en ${hit} unidad${hit === 1 ? '' : 'es'}.`, side === 'player' ? 'good' : 'bad');
       break;
     }
     case 'buffOtherAtk': {
+      let hit = 0;
       for (let l = 0; l < 3; l++) {
         const u = s.units[slotOf(side, l)];
-        if (u && !(l === lane)) { u.atk += op.amount; events.push({ t: 'buff', side, lane: l, label: `+${op.amount} ATK` }); }
+        if (u && !(l === lane)) { u.atk += op.amount; events.push({ t: 'buff', side, lane: l, label: `+${op.amount} ATK` }); hit++; }
       }
+      log(s, `${card.name} alza su estandarte: +${op.amount} de ATK a ${hit} unidad${hit === 1 ? '' : 'es'}.`, side === 'player' ? 'good' : 'bad');
       break;
     }
     case 'draw': {

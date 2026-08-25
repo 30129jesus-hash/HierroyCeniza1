@@ -70,7 +70,7 @@ export default function CardView({ card, size = 'hand', playable = true, selecte
 
       {/* arte: sigilo sobre círculo rúnico */}
       <div className="absolute inset-x-2 top-6 sm:top-7 bottom-[38%] flex items-center justify-center overflow-hidden"
-        style={{ background: `radial-gradient(80% 80% at 50% 45%, hsl(${card.hue} 65% 22% / 0.9), hsl(${card.hue} 40% 8% / 0.95) 75%)`, border: '1px solid rgba(168,151,122,0.2)' }}>
+        style={{ background: `radial-gradient(80% 80% at 50% 45%, hsl(${card.hue} 65% 22% / 0.9), hsl(${card.hue} 40% 8% / 0.95) 75%)`, border: `1px solid ${rarC}44` }}>
         <div className="absolute inset-0 flex items-center justify-center" style={{ color: `hsl(${card.hue} 80% 65% / 0.35)` }}>
           <RuneRing className="w-[130%] h-[130%]" />
         </div>
@@ -82,7 +82,7 @@ export default function CardView({ card, size = 'hand', playable = true, selecte
             <Sigil icon="bow" className="w-3 h-3" />
           </div>
         )}
-        <div className="absolute bottom-0.5 right-1 w-1.5 h-1.5 rotate-45" style={{ background: rc, boxShadow: `0 0 6px ${rc}` }} />
+        <div className="absolute bottom-0.5 right-1 w-1.5 h-1.5 rotate-45" style={{ background: rarC, boxShadow: `0 0 6px ${rarC}` }} />
         {count !== undefined && count > 1 && (
           <div className="absolute top-0.5 right-1 font-display text-xs text-bone-300 bg-ink-900/80 px-1 leading-tight">×{count}</div>
         )}
@@ -116,7 +116,7 @@ export default function CardView({ card, size = 'hand', playable = true, selecte
           </span>
         </div>
       ) : (
-        <div className="absolute bottom-0.5 inset-x-1 text-center font-display text-[0.6rem] tracking-widest uppercase" style={{ color: rc }}>
+        <div className="absolute bottom-0.5 inset-x-1 text-center font-display text-[0.6rem] tracking-widest uppercase" style={{ color: rarC }}>
           {card.spell?.school === 'heal' ? 'Apoyo' : card.spell?.school.startsWith('buff') || card.spell?.school === 'teamBuff' ? 'Mejora' : 'Ítem'}
         </div>
       )}
