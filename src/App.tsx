@@ -4,22 +4,20 @@ import type { BattleConfig, MetaState, Side } from './game/types';
 import { ALL_CARDS, RELICS, STARTER_COLLECTION, STORY_LEVELS, achById, cardById, pactById, randomRelicOptions, survivalDeck, vsDeck } from './game/cards';
 import { resolveChallenges, challengeById, type BattleOutcome } from './game/challenges';
 import BattleScreen, { type BattleStats } from './components/BattleScreen';
-import { AchievementsScreen, ChallengesScreen, CollectionScreen, DeckScreen, PremiumScreen, RelicPicker, ShopScreen, StoryScreen, SurvivalScreen, TitleScreen, VersusScreen } from './components/screens';
+import { ArsenalHub, BattleHub, FeatsHub, MarketHub, RelicPicker, TitleScreen } from './components/screens';
 import { Sigil } from './components/icons';
 import { sfx } from './game/audio';
 
 type Screen =
   | { name: 'title' }
-  | { name: 'story' }
-  | { name: 'survival' }
-  | { name: 'versus' }
+  | { name: 'battle' }
+  | { name: 'feats' }
   | { name: 'arsenal' }
-  | { name: 'achievements' }
-  | { name: 'challenges' }
-  | { name: 'abismo' }
-  | { name: 'shop' }
-  | { name: 'collection' }
-  | { name: 'battle' };
+  | { name: 'market' };
+
+/* Cada hub recuerda en qué pestaña se quedó el jugador. */
+type HubTab = { battle: string; feats: string; arsenal: string; market: string };
+const initialTabs: HubTab = { battle: 'historia', feats: 'desafios', arsenal: 'forja', market: 'mercader' };
 
 /* Proyección del meta tras aplicar las recompensas de esta batalla (el state aún no se ha actualizado). */
 interface ProjectedMeta {
@@ -100,6 +98,12 @@ function playerBattleDeck(collection: Record<string, number>, saved: string[] = 
 function Inner() {
   const { meta, dispatch } = useMeta();
   const [screen, setScreen] = useState<Screen>({ name: 'title' });
+  const [tabs, setTabs] = useState<HubTab>(initialTabs);
+  /* Va a un hub dejando la pestaña indicada activa. */
+  const go = (hub: Exclude<Screen['name'], 'title'>, tab?: string) => {
+    if (hub !== 'battle' && tab) setTabs((t) => ({ ...t, [hub]: tab }));
+    setScreen({ name: hub } as Screen);
+  };
   const [battleCtx, setBattleCtx] = useState<{ cfg: BattleConfig; mode: 'historia' | 'supervivencia' | 'versus'; param: number; pacts: string[] } | null>(null);
   const [reward, setReward] = useState<Reward | null>(null);
   const [streak, setStreak] = useState(0);
@@ -242,7 +246,7 @@ function Inner() {
             first ? (param < 8 ? `Nuevo estandarte desbloqueado: ${STORY_LEVELS[param].title}.` : 'La campaña está completa. El reino respira.') : 'Recompensa por repetir la campaña.',
           ],
           gold,
-          next: () => { setReward(null); setScreen({ name: 'story' }); },
+          next: () => { setReward(null); go('battle', 'historia'); },
           nextLabel: 'Volver al mapa',
         });
       } else {
@@ -252,7 +256,7 @@ function Inner() {
           title: 'Derrota',
           lines: [conceded ? 'Abandonaste el campo. El oro no se gana huyendo.' : `${lv.hero} se alzó vencedor. Afila el acero e inténtalo de nuevo.`],
           gold: 0,
-          next: () => { setReward(null); setScreen({ name: 'story' }); },
+          next: () => { setReward(null); go('battle', 'historia'); },
           nextLabel: 'Volver al mapa',
         });
       }
@@ -295,7 +299,7 @@ function Inner() {
             conceded ? 'Te retiraste con el botín de la ronda.' : 'Consuelo del mercader: unas monedas.',
           ],
           gold,
-          next: () => { setReward(null); setScreen({ name: 'survival' }); },
+          next: () => { setReward(null); go('battle', 'supervivencia'); },
           nextLabel: 'Volver al campamento',
         });
       }
@@ -310,7 +314,7 @@ function Inner() {
           title: 'Duelo ganado',
           lines: [`Victoria en categoría ${names[param]} · ${stats.kills} bajas.`, 'El perdedor paga su deuda en oro.'],
           gold: rewards[param],
-          next: () => { setReward(null); setScreen({ name: 'versus' }); },
+          next: () => { setReward(null); go('battle', 'versus'); },
           nextLabel: 'Otro duelo',
         });
       } else {
@@ -320,7 +324,7 @@ function Inner() {
           title: 'Duelo perdido',
           lines: [conceded ? 'Abandonaste el duelo. Sin honor no hay oro.' : 'El rival fue más rápido esta vez.'],
           gold: 0,
-          next: () => { setReward(null); setScreen({ name: 'versus' }); },
+          next: () => { setReward(null); go('battle', 'versus'); },
           nextLabel: 'Volver al duelo',
         });
       }
@@ -331,17 +335,20 @@ function Inner() {
   return (
     <div className="min-h-screen bg-ink-950 text-bone-300 no-select">
       {screen.name === 'title' && <TitleScreen onNav={(s) => setScreen({ name: s } as Screen)} />}
-      {screen.name === 'story' && <StoryScreen onBack={() => setScreen({ name: 'title' })} onPlay={startStory} />}
-      {screen.name === 'survival' && <SurvivalScreen onBack={() => setScreen({ name: 'title' })} onPlay={() => startSurvival(0, [])} best={meta.survivalBest} />}
-      {screen.name === 'versus' && <VersusScreen onBack={() => setScreen({ name: 'title' })} onPlay={startVersus} />}
-      {screen.name === 'arsenal' && <DeckScreen onBack={() => setScreen({ name: 'title' })} />}
-      {screen.name === 'achievements' && <AchievementsScreen onBack={() => setScreen({ name: 'title' })} />}
-      {screen.name === 'challenges' && <ChallengesScreen onBack={() => setScreen({ name: 'title' })} />}
-      {screen.name === 'abismo' && <PremiumScreen onBack={() => setScreen({ name: 'title' })} />}
-      {screen.name === 'shop' && <ShopScreen onBack={() => setScreen({ name: 'title' })} />}
-      {screen.name === 'collection' && <CollectionScreen onBack={() => setScreen({ name: 'title' })} />}
-      {screen.name === 'battle' && battleCtx && (
+      {screen.name === 'battle' && battleCtx ? (
         <BattleScreen key={battleKey} cfg={battleCtx.cfg} onEnd={onBattleEnd} />
+      ) : screen.name === 'battle' ? (
+        <BattleHub tab={tabs.battle} onTab={(t) => setTabs((p) => ({ ...p, battle: t }))} onBack={() => setScreen({ name: 'title' })}
+          onStory={startStory} onSurvival={() => startSurvival(0, [])} onVersus={startVersus} best={meta.survivalBest} />
+      ) : null}
+      {screen.name === 'feats' && (
+        <FeatsHub tab={tabs.feats} onTab={(t) => setTabs((p) => ({ ...p, feats: t }))} onBack={() => setScreen({ name: 'title' })} />
+      )}
+      {screen.name === 'arsenal' && (
+        <ArsenalHub tab={tabs.arsenal} onTab={(t) => setTabs((p) => ({ ...p, arsenal: t }))} onBack={() => setScreen({ name: 'title' })} />
+      )}
+      {screen.name === 'market' && (
+        <MarketHub tab={tabs.market} onTab={(t) => setTabs((p) => ({ ...p, market: t }))} onBack={() => setScreen({ name: 'title' })} />
       )}
 
       {/* recompensa / resultado */}

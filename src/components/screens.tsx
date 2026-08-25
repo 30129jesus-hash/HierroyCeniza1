@@ -89,7 +89,7 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
 
   const items = [
     {
-      id: 'modes', label: 'Batalla', icon: 'sword', hue: 46,
+      id: 'battle', label: 'Batalla', icon: 'sword', hue: 46,
       desc: `Historia · Supervivencia (récord ${meta.survivalBest}) · Versus (${meta.vsWins} duelos)`,
     },
     {
@@ -907,13 +907,26 @@ function fmtCountdown(msLeft: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+function SectionTitle({ icon, title, sub }: { icon: string; title: string; sub: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-5">
+      <span className="text-gold-400" style={{ filter: 'drop-shadow(0 0 8px rgba(255,215,106,0.6))' }}><Sigil icon={icon} className="w-6 h-6" /></span>
+      <div>
+        <p className="font-display text-2xl text-bone-100 leading-none text-glow-ember">{title}</p>
+        <p className="font-body text-[0.62rem] uppercase tracking-widest text-bone-500 mt-1">{sub}</p>
+      </div>
+      <div className="flex-1 h-px bg-gradient-to-r from-gold-500/40 to-transparent" />
+    </div>
+  );
+}
+
 const RELIC_PRICE = 150;
 
-export function PremiumScreen({ onBack }: { onBack: () => void }) {
+export function PremiumScreen() {
   const { meta, dispatch } = useMeta();
   const now = useNow();
-  const [tab, setTab] = useState<'oferta' | 'diamantes' | 'cosmeticos' | 'relicario'>('oferta');
   const [err, setErr] = useState(false);
+  const [caravan, setCaravan] = useState<string | null>(null);
 
   const fail = () => { sfx.error(); setErr(true); setTimeout(() => setErr(false), 500); };
 
@@ -934,7 +947,8 @@ export function PremiumScreen({ onBack }: { onBack: () => void }) {
     const card = r < 0.1 ? pick(SHOP_POOL_LEGENDARY) : r < 0.4 ? pick(SHOP_POOL_EPIC) : pick(SHOP_POOL_RARE);
     dispatch({ type: 'spendDiamonds', amount: DAILY_OFFER.diamonds });
     dispatch({ type: 'claimOffer', date: todayKey(), card });
-    sfx.epic();
+    setCaravan(card);
+    sfx.pack();
   };
 
   const unlockFrame = (id: string, price: number) => {
@@ -955,21 +969,10 @@ export function PremiumScreen({ onBack }: { onBack: () => void }) {
     sfx.epic();
   };
 
-  const tabs = [
-    { id: 'oferta', label: 'Oferta Diaria', icon: 'bag' },
-    { id: 'diamantes', label: 'Diamantes', icon: 'gem' },
-    { id: 'cosmeticos', label: 'Cosméticos', icon: 'crown' },
-    { id: 'relicario', label: 'Relicario', icon: 'gem' },
-  ] as const;
-
   return (
-    <div className="bg-arena min-h-screen relative">
-      <div className="bg-vignette absolute inset-0 pointer-events-none" />
-      <Embers n={10} />
-      <Header title="El Abismo" sub="Lo que el oro no compra, la gema lo reclama" onBack={onBack} />
-
+    <>
       {/* saldo de diamantes */}
-      <div className="relative z-10 flex justify-center -mt-2 mb-4">
+      <div className="relative z-10 flex justify-center mb-4">
         <div className={`panel-dark px-6 py-2 flex items-center gap-2 ${err ? 'anim-shake' : ''}`} style={{ borderColor: 'rgba(111,232,255,0.45)' }}>
           <Sigil icon="gem" className="w-5 h-5 text-frost-400" />
           <span className="font-display text-2xl text-frost-400" style={{ textShadow: '0 0 10px rgba(111,232,255,0.6)' }}>{meta.diamonds.toLocaleString()}</span>
@@ -977,21 +980,11 @@ export function PremiumScreen({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      {/* pestañas */}
-      <div className="relative z-10 flex justify-center gap-2 px-4 flex-wrap mb-6">
-        {tabs.map((t) => (
-          <button key={t.id} onClick={() => { sfx.click(); setTab(t.id); }}
-            className={`btn-rune px-4 py-1.5 text-base flex items-center gap-1.5 border transition-colors ${tab === t.id ? 'text-bone-100' : 'text-bone-500'}`}
-            style={{ background: tab === t.id ? 'linear-gradient(160deg, #2b2138, #15101d)' : 'rgba(30,23,41,0.5)', borderColor: tab === t.id ? 'rgba(255,215,106,0.6)' : 'rgba(168,151,122,0.25)' }}>
-            <Sigil icon={t.icon} className="w-4 h-4" />{t.label}
-          </button>
-        ))}
-      </div>
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 pb-16 space-y-10">
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 pb-16">
-
-        {tab === 'oferta' && (
-          <div className="anim-slide-down">
+        {/* OFERTA DIARIA */}
+        <section className="anim-slide-down">
+          <SectionTitle icon="bag" title="Oferta Diaria" sub="Un cargamento al día, ni uno más" />
             <div className="panel-dark p-6 sm:p-8 text-center relative overflow-hidden" style={{ borderColor: 'rgba(255,215,106,0.5)' }}>
               <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: 'radial-gradient(60% 80% at 50% 0%, rgba(255,215,106,0.35), transparent 70%)' }} />
               <p className="font-body text-[0.62rem] uppercase tracking-[0.3em] text-gold-400 mb-1">Solo una vez al día</p>
@@ -1019,13 +1012,14 @@ export function PremiumScreen({ onBack }: { onBack: () => void }) {
                 {offerTaken ? 'Caravana ya saqueada hoy' : `${DAILY_OFFER.diamonds} diamantes`}
               </button>
               {!offerTaken && meta.diamonds < DAILY_OFFER.diamonds && (
-                <p className="font-body text-[0.62rem] text-blood-400 mt-2">Diamantes insuficientes — visita la pestaña Diamantes</p>
+                <p className="font-body text-[0.62rem] text-blood-400 mt-2">Diamantes insuficientes — la sección de abajo puede solucionarlo</p>
               )}
             </div>
-          </div>
-        )}
+        </section>
 
-        {tab === 'diamantes' && (
+        {/* DIAMANTES */}
+        <section className="anim-slide-down" style={{ animationDelay: '0.05s' }}>
+          <SectionTitle icon="gem" title="Diamantes" sub="Bonificación por volumen: el abismo premia la avaricia" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {DIAMOND_PACKS.map((p, i) => {
               const total = p.diamonds + p.bonus;
@@ -1052,11 +1046,11 @@ export function PremiumScreen({ onBack }: { onBack: () => void }) {
             })}
             <p className="sm:col-span-2 lg:col-span-3 font-body text-[0.62rem] italic text-bone-500 text-center">Demo sin pagos reales: cada compra acredita los diamantes al instante.</p>
           </div>
-        )}
+        </section>
 
-        {tab === 'cosmeticos' && (
-          <div>
-            <p className="font-body text-center text-[0.7rem] text-bone-300/80 mb-1">Marcos de carta: puro estilo, cero ventaja. Equípalo y presúmelo en cada batalla.</p>
+        {/* COSMÉTICOS */}
+        <section className="anim-slide-down" style={{ animationDelay: '0.1s' }}>
+          <SectionTitle icon="crown" title="Marcos de Carta" sub="Puro estilo, cero ventaja. Equípalo y presúmelo en cada batalla" />
             {seasonLeft > 0 && (
               <p className="font-body text-center text-[0.62rem] uppercase tracking-widest text-blood-400 mb-5">
                 Temporada de marcos limitados termina en <b className="font-display text-base tabular-nums">{fmtCountdown(seasonLeft)}</b>
@@ -1098,14 +1092,11 @@ export function PremiumScreen({ onBack }: { onBack: () => void }) {
                 );
               })}
             </div>
-          </div>
-        )}
+        </section>
 
-        {tab === 'relicario' && (
-          <div>
-            <p className="font-body text-center text-[0.7rem] text-bone-300/80 mb-5">
-              El Relicario Hueco: guarda tus reliquias favoritas tras un marco dorado. Aparecerán con prioridad en tus cacerías de Supervivencia.
-            </p>
+        {/* RELICARIO */}
+        <section className="anim-slide-down" style={{ animationDelay: '0.15s' }}>
+          <SectionTitle icon="gem" title="Relicario Hueco" sub="Tus reliquias favoritas tras un marco dorado; aparecerán con prioridad en Supervivencia" />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {RELICS.map((r, i) => {
                 const owned = meta.relicsOwned.includes(r.id);
@@ -1132,9 +1123,91 @@ export function PremiumScreen({ onBack }: { onBack: () => void }) {
                 );
               })}
             </div>
-          </div>
-        )}
+        </section>
       </div>
-    </div>
+
+      {/* revelación de la caravana */}
+      {caravan && (
+        <div className="fixed inset-0 z-50 bg-ink-950/94 flex items-center justify-center p-4">
+          <div className="text-center anim-zoom-in">
+            <p className="font-body text-[0.62rem] uppercase tracking-[0.35em] text-gold-400 mb-1">La caravana ha sido saqueada</p>
+            <p className="font-display text-4xl text-bone-100 text-glow-gold mb-6">Tu botín</p>
+            <div className="flex items-center justify-center gap-4 flex-wrap mb-6">
+              <div className="flex items-center gap-2 font-display text-4xl text-gold-400 text-glow-gold anim-zoom-in" style={{ animationDelay: '0.1s' }}>
+                <Sigil icon="coin" className="w-9 h-9" />+{DAILY_OFFER.gold}
+              </div>
+              <div className="anim-zoom-in" style={{ animationDelay: '0.35s' }}>
+                <CardView card={cardById(caravan)} size="shop" />
+              </div>
+            </div>
+            <p className="font-body text-[0.62rem] text-bone-500 mb-5">El oro y la carta ya están en tu poder. Vuelve mañana por más.</p>
+            <button onClick={() => { sfx.coin(); setCaravan(null); }}
+              className="btn-rune px-10 py-2.5 text-xl font-bold text-bone-100"
+              style={{ background: 'linear-gradient(160deg, #8e6a1f, #5c430f)', border: '1px solid rgba(232,182,76,0.5)', boxShadow: '0 0 18px rgba(232,182,76,0.35)' }}>
+              Reclamar botín
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ================= LOS 4 HUBS (secciones con pestañas) ================= */
+
+export function BattleHub({ tab, onTab, onBack, onStory, onSurvival, onVersus, best }: {
+  tab: string; onTab: (t: string) => void; onBack: () => void;
+  onStory: (lv: number, pacts: string[]) => void; onSurvival: () => void; onVersus: (d: number) => void; best: number;
+}) {
+  return (
+    <TabShell title="Campo de Batalla" sub="Elige dónde derramar la sangre" onBack={onBack} tab={tab} onTab={onTab}
+      tabs={[
+        { id: 'historia', label: 'Historia', icon: 'flag' },
+        { id: 'supervivencia', label: 'Supervivencia', icon: 'infinity' },
+        { id: 'versus', label: 'Versus', icon: 'swords' },
+      ]}>
+      {tab === 'historia' && <StoryScreen onBack={onBack} onPlay={onStory} />}
+      {tab === 'supervivencia' && <SurvivalScreen onBack={onBack} onPlay={onSurvival} best={best} />}
+      {tab === 'versus' && <VersusScreen onBack={onBack} onPlay={onVersus} />}
+    </TabShell>
+  );
+}
+
+export function FeatsHub({ tab, onTab, onBack }: { tab: string; onTab: (t: string) => void; onBack: () => void }) {
+  return (
+    <TabShell title="Hazañas" sub="Encargos del gremio y gloria grabada en hierro" onBack={onBack} tab={tab} onTab={onTab}
+      tabs={[
+        { id: 'desafios', label: 'Desafíos', icon: 'sun' },
+        { id: 'logros', label: 'Logros', icon: 'crown' },
+      ]}>
+      {tab === 'desafios' && <ChallengesScreen onBack={onBack} />}
+      {tab === 'logros' && <AchievementsScreen onBack={onBack} />}
+    </TabShell>
+  );
+}
+
+export function ArsenalHub({ tab, onTab, onBack }: { tab: string; onTab: (t: string) => void; onBack: () => void }) {
+  return (
+    <TabShell title="El Arsenal" sub="Forja tu mazo y contempla tu botín" onBack={onBack} tab={tab} onTab={onTab}
+      tabs={[
+        { id: 'forja', label: 'Forja', icon: 'hammer' },
+        { id: 'coleccion', label: 'Colección', icon: 'cards' },
+      ]}>
+      {tab === 'forja' && <DeckScreen onBack={onBack} />}
+      {tab === 'coleccion' && <CollectionScreen onBack={onBack} />}
+    </TabShell>
+  );
+}
+
+export function MarketHub({ tab, onTab, onBack }: { tab: string; onTab: (t: string) => void; onBack: () => void }) {
+  return (
+    <TabShell title="El Mercado" sub="Oro por acero, gemas por vanidad" onBack={onBack} tab={tab} onTab={onTab}
+      tabs={[
+        { id: 'mercader', label: 'Mercader', icon: 'bag' },
+        { id: 'abismo', label: 'El Abismo', icon: 'gem' },
+      ]}>
+      {tab === 'mercader' && <ShopScreen onBack={onBack} />}
+      {tab === 'abismo' && <PremiumScreen />}
+    </TabShell>
   );
 }
