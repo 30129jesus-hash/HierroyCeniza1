@@ -1,5 +1,5 @@
 import type { CardDef } from '../game/types';
-import { RARITY_COLOR } from '../game/cards';
+import { RARITY_COLOR, RARITY_GLOW, RARITY_HALO, RARITY_WIDTH } from '../game/cards';
 import { Sigil, RuneRing } from './icons';
 import { useMeta } from '../state/store';
 import { frameById } from '../game/premium';
@@ -22,39 +22,46 @@ const SCHOOL_ICON: Record<string, string> = {
 export default function CardView({ card, size = 'hand', playable = true, selected = false, dimmed = false, count, onClick }: Props) {
   const { meta } = useMeta();
   const frame = frameById(meta.activeFrame);
-  const rc = frame ? frame.accent : RARITY_COLOR[card.rarity];
+  // La rareza SIEMPRE manda el borde y el brillo: es lo primero que ve el jugador.
+  const rarC = RARITY_COLOR[card.rarity];
+  const rarGlow = RARITY_GLOW[card.rarity];
+  const rarHalo = RARITY_HALO[card.rarity];
+  const rarW = RARITY_WIDTH[card.rarity];
+  const legendary = card.rarity === 'legendaria';
   const frameAnim = frame?.anim && frame.anim !== 'none' ? `anim-frame-${frame.anim}` : '';
   const isUnit = card.kind === 'unit';
   const w = size === 'shop' ? 'w-40 h-56' : size === 'tiny' ? 'w-24 h-32' : 'w-[7.2rem] h-[10.2rem] sm:w-32 sm:h-44';
+
+  // drop-shadow se pinta sobre la silueta recortada: el halo de rareza se ve por fuera del clip-path
+  const dimFilter = dimmed || !playable ? ' saturate(0.35) brightness(0.55)' : '';
+  const glowFilter = rarHalo > 0 && !dimmed && playable ? `drop-shadow(0 0 ${rarHalo}px ${rarGlow})` : '';
 
   return (
     <button
       onClick={onClick}
       disabled={!onClick}
-      className={`${w} relative shrink-0 text-left no-select transition-transform duration-150 ${onClick ? 'cursor-pointer' : 'cursor-default'} ${selected ? '-translate-y-4 scale-105 z-30' : ''} ${dimmed || !playable ? 'saturate-[0.4] brightness-[0.55]' : ''}`}
-      style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}
+      className={`${w} relative shrink-0 text-left no-select transition-transform duration-150 ${onClick ? 'cursor-pointer' : 'cursor-default'} ${selected ? '-translate-y-4 scale-105 z-30' : ''}`}
+      style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)', filter: `${glowFilter}${dimFilter}`.trim() || undefined }}
       aria-label={card.name}
     >
-      {/* halo del marco equipado */}
+      {/* halo del marco cosmético equipado (capa exterior, no pisa la rareza) */}
       {frame && (
-        <div className={`absolute -inset-0.5 pointer-events-none ${frameAnim}`}
-          style={{ boxShadow: `0 0 14px ${frame.glow}, 0 0 4px ${frame.glow}`, opacity: 0.9 }} />
+        <div className={`absolute inset-0 pointer-events-none z-20 ${frameAnim}`}
+          style={{ border: `1px solid ${frame.accent}`, boxShadow: `inset 0 0 12px ${frame.glow}`, opacity: 0.95 }} />
       )}
-      {/* marco */}
+      {/* marco: borde = rareza */}
       <div
-        className={`absolute inset-0 ${frameAnim}`}
+        className="absolute inset-0"
         style={{
-          background: frame
-            ? `linear-gradient(170deg, hsl(${card.hue} 30% 15%) 0%, #0d0a12 60%), radial-gradient(120% 60% at 50% 0%, ${frame.glow}, transparent 70%)`
-            : `linear-gradient(170deg, hsl(${card.hue} 28% 16%) 0%, #0d0a12 70%)`,
-          border: `1.5px solid ${selected ? '#ffd76a' : rc}`,
+          background: `linear-gradient(170deg, hsl(${card.hue} 28% ${card.rarity === 'común' ? 14 : 17}%) 0%, #0d0a12 70%)`,
+          border: `${rarW}px solid ${selected ? '#ffd76a' : rarC}`,
           boxShadow: selected
-            ? `0 0 22px ${rc}, inset 0 0 18px rgba(0,0,0,0.8)`
-            : frame
-              ? `0 6px 18px rgba(0,0,0,0.6), inset 0 0 14px rgba(0,0,0,0.65), inset 0 0 10px ${frame.glow}`
-              : `0 6px 18px rgba(0,0,0,0.6), inset 0 0 14px rgba(0,0,0,0.65)`,
+            ? `inset 0 0 22px rgba(255,215,106,0.35), inset 0 0 18px rgba(0,0,0,0.8)`
+            : `0 6px 18px rgba(0,0,0,0.6), inset 0 0 14px rgba(0,0,0,0.65), inset 0 0 ${rarHalo > 0 ? 10 : 0}px ${rarGlow}`,
         }}
       />
+      {/* brillo de legendaria */}
+      {legendary && <div className="absolute inset-0 pointer-events-none anim-sheen z-10" />}
       {/* costo */}
       <div className="absolute -top-0.5 -left-0.5 z-10 w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center"
         style={{ clipPath: 'polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%)', background: 'linear-gradient(135deg, #2b2138, #15101d)', borderBottom: '1px solid rgba(168,151,122,0.4)', borderRight: '1px solid rgba(168,151,122,0.4)' }}>

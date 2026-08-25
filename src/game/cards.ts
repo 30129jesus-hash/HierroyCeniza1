@@ -228,11 +228,27 @@ export const ALL_CARDS: Record<string, CardDef> = Object.fromEntries(
 
 export const cardById = (id: string): CardDef => ALL_CARDS[id];
 
+/* Jerarquía visual: gris apagado → azul → violeta → oro. Se lee sin leer. */
 export const RARITY_COLOR: Record<Rarity, string> = {
-  'común': '#a8977a',
-  'rara': '#35c8e8',
+  'común': '#a8a3b3',
+  'rara': '#3ec9ff',
   'épica': '#b065ff',
   'legendaria': '#ffd76a',
+};
+
+export const RARITY_GLOW: Record<Rarity, string> = {
+  'común': 'rgba(168,163,179,0)',
+  'rara': 'rgba(62,201,255,0.55)',
+  'épica': 'rgba(176,101,255,0.6)',
+  'legendaria': 'rgba(255,215,106,0.65)',
+};
+
+export const RARITY_WIDTH: Record<Rarity, number> = {
+  'común': 1, 'rara': 1.5, 'épica': 2, 'legendaria': 2,
+};
+
+export const RARITY_HALO: Record<Rarity, number> = {
+  'común': 0, 'rara': 11, 'épica': 15, 'legendaria': 19,
 };
 
 export const RARITY_ORDER: Record<Rarity, number> = { 'común': 0, 'rara': 1, 'épica': 2, 'legendaria': 3 };
