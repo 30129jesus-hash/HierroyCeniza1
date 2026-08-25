@@ -64,8 +64,11 @@ body {
 }
 /* menú principal: el soldado de espaldas ante la fortaleza en llamas */
 .bg-menu-img {
+  background-color: #0d0a12;
   background-image:
-    linear-gradient(180deg, rgba(13, 10, 18, 0.72) 0%, rgba(13, 10, 18, 0.42) 40%, rgba(13, 10, 18, 0.9) 100%),
+    /* velo oscuro frío: apaga el naranja y devuelve el registro dark-fantasy */
+    linear-gradient(100deg, rgba(10, 7, 14, 0.93) 0%, rgba(13, 10, 18, 0.74) 40%, rgba(13, 10, 18, 0.5) 68%, rgba(10, 7, 14, 0.8) 100%),
+    linear-gradient(180deg, rgba(10, 7, 14, 0.82) 0%, rgba(22, 9, 15, 0.55) 45%, rgba(10, 7, 14, 0.95) 100%),
     url('https://image.qwenlm.ai/generated-images/fcae4e43-f34c-4392-a333-6325223f3c4b/_result.png');
   background-size: cover;
   background-position: center;

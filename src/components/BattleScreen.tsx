@@ -45,9 +45,11 @@ const DMG_COLOR: Record<string, string> = {
   hit: '#ff8c3b', fire: '#ff5722', ice: '#6fe8ff', poison: '#9dff57',
 };
 
+/* coordenadas aproximadas (en %) de cada ancla para los efectos flotantes,
+   ajustadas al layout táctico: tablero centrado a la izquierda + panel derecho */
 const anchorPos = (side: Side, lane: number | 'hero'): { x: number; y: number } => {
-  if (side === 'enemy') return lane === 'hero' ? { x: 87, y: 15 } : { x: 20 + lane * 30, y: 24 };
-  return lane === 'hero' ? { x: 13, y: 78 } : { x: 20 + lane * 30, y: 63 };
+  if (side === 'enemy') return lane === 'hero' ? { x: 88, y: 8 } : { x: 27 + lane * 13, y: 27 };
+  return lane === 'hero' ? { x: 66, y: 60 } : { x: 27 + lane * 13, y: 62 };
 };
 
 export default function BattleScreen({ cfg, onEnd }: Props) {
@@ -371,7 +373,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     const lunging = lunge && ((side === 'player' && lunge.lane === lane) || (side === 'enemy' && lunge.lane === slot - 3));
 
     return (
-      <div key={slot} className="relative flex-1 max-w-[7.5rem] aspect-[3/4]">
+      <div key={slot} className="relative flex-1 max-w-[8rem] sm:max-w-[8.75rem] aspect-[3/4]">
         <button
           onClick={() => clickUnit(side, lane)}
           disabled={!u && !(state.phase === 'deployPlayer' && selCard?.kind === 'unit')}
@@ -510,75 +512,103 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
       <div className="bg-vignette absolute inset-0 pointer-events-none z-0" />
 
       <div className={`relative z-10 min-h-screen flex flex-col ${shakeClass}`}>
-        {/* cabecera */}
-        <header className="flex items-center justify-between gap-2 px-3 sm:px-6 py-2.5 border-b border-bone-500/15 bg-ink-950/70">
-          <div className="flex items-center gap-2 min-w-0">
-            <button onClick={() => { sfx.click(); setShowConcede(true); }}
-              className="btn-rune px-2.5 py-1 text-sm bg-ink-700 text-bone-300 border border-bone-500/25 flex items-center gap-1">
-              <Sigil icon="back" className="w-3.5 h-3.5" /> Rendirse
+        {/* cabecera: una sola línea compacta — título / ronda / vida enemiga */}
+        <header className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-1.5 border-b border-bone-500/15 bg-ink-950/80">
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => { sfx.click(); setShowConcede(true); }} title="Rendirse"
+              className="btn-rune p-1.5 bg-ink-700 text-bone-300 border border-bone-500/25">
+              <Sigil icon="back" className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => { sfx.click(); dispatch({ type: 'toggleMusic' }); }}
-              title="Música ambiental"
-              className="btn-rune px-2 py-1 bg-ink-700 border border-bone-500/25"
+            <button onClick={() => { sfx.click(); dispatch({ type: 'toggleMusic' }); }} title="Música ambiental"
+              className="btn-rune p-1.5 bg-ink-700 border border-bone-500/25"
               style={{ color: meta.musicOn ? '#ffd76a' : '#4a4358' }}>
-              <Sigil icon="wave" className="w-4 h-4" />
+              <Sigil icon="wave" className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => { sfx.click(); setShowHelp(true); }}
-              className="btn-rune px-2 py-1 bg-ink-700 text-bone-300 border border-bone-500/25">
-              <Sigil icon="help" className="w-4 h-4" />
+            <button onClick={() => { sfx.click(); setShowHelp(true); }} title="Cómo se lucha"
+              className="btn-rune p-1.5 bg-ink-700 text-bone-300 border border-bone-500/25">
+              <Sigil icon="help" className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="text-center min-w-0">
-            <p className="font-display text-lg sm:text-2xl text-gold-400 text-glow-gold leading-none truncate">{cfg.title}</p>
-            <p className="font-body text-[0.6rem] uppercase tracking-widest text-bone-500">
+
+          <p className="font-display text-base sm:text-xl text-gold-400 text-glow-gold leading-none truncate">{cfg.title}</p>
+
+          <div className="flex-1 text-center shrink">
+            <span className="font-body text-[0.62rem] uppercase tracking-widest text-bone-500 whitespace-nowrap">
               Ronda <b className="text-bone-100">{Math.min(state.round, cfg.maxRounds)}</b>/{cfg.maxRounds}
-              {(cfg.relics ?? []).length > 0 && <span className="text-gold-400"> · {(cfg.relics ?? []).map((r) => RELIC_LOOKUP[r] ?? '◆').join(' ')}</span>}
-            </p>
+            </span>
+            {(cfg.relics ?? []).length > 0 && (
+              <span className="ml-2 font-body text-[0.62rem] text-gold-400">{(cfg.relics ?? []).map((r) => RELIC_LOOKUP[r] ?? '◆').join(' ')}</span>
+            )}
           </div>
-          <div className="flex items-center gap-3 text-bone-300">
-            <span className="flex items-center gap-1 font-display" title="Mazo enemigo"><Sigil icon="cards" className="w-4 h-4 text-blood-400" />{state.decks.enemy.length}</span>
-            <span className="flex items-center gap-1 font-display" title="Tu mazo"><Sigil icon="cards" className="w-4 h-4 text-frost-400" />{state.decks.player.length}</span>
-          </div>
+
+          {/* vida del héroe enemigo */}
+          <button onClick={clickEnemyHero}
+            className={`relative shrink-0 no-select text-left ${heroTargetable || (state.phase === 'deployPlayer' && sel !== null && isSpellTarget({ kind: 'hero', side: 'enemy' })) ? 'cursor-pointer anim-target' : 'cursor-default'}`}>
+            <div className="panel-dark flex items-center gap-2 px-2 py-1"
+              style={{ borderColor: 'rgba(224,47,69,0.45)', clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}>
+              <span className="shrink-0" style={{ color: `hsl(${cfg.enemyHue} 80% 62%)`, filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.8))' }}>
+                <Sigil icon={cfg.enemyIcon} className="w-5 h-5 sm:w-6 sm:h-6" />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-display text-xs sm:text-sm leading-none text-bone-100 truncate max-w-[6.5rem] sm:max-w-[9rem]">{cfg.enemyHeroName}</span>
+                <span className="block font-display text-sm leading-none mt-0.5" style={{ color: state.heroHp.enemy / state.heroMaxHp.enemy > 0.4 ? '#ff4d5e' : '#8e1526' }}>
+                  {state.heroHp.enemy}<span className="text-bone-500 text-[0.6rem]">/{state.heroMaxHp.enemy}</span>
+                </span>
+              </span>
+              <span className="w-12 sm:w-20 h-1 bg-ink-950 overflow-hidden shrink-0">
+                <span className="hp-bar-fill block h-full" style={{ width: `${(state.heroHp.enemy / state.heroMaxHp.enemy) * 100}%`, background: 'linear-gradient(90deg, #8e1526, #e02f45)' }} />
+              </span>
+            </div>
+            {tauntedByFoe && !isAttackPhase && sel === null && (
+              <span className="block font-body text-[0.5rem] uppercase tracking-wider text-frost-400 text-right mt-0.5">Provocación activa</span>
+            )}
+            {isAttackPhase && selAttacker !== null && !heroTargetable && (
+              <span className="block font-body text-[0.5rem] uppercase tracking-wider text-bone-500 text-right mt-0.5">
+                {tauntedByFoe ? 'Provocación lo protege' : 'Solo a distancia'}
+              </span>
+            )}
+          </button>
         </header>
 
-        {/* tablero */}
-        <main className="flex-1 flex flex-col justify-between max-w-5xl w-full mx-auto px-2 sm:px-6 py-3 gap-2">
-          {/* fila enemiga */}
-          <div className="flex items-start justify-center gap-2 sm:gap-4">
-            {renderHero('enemy')}
-            <div className="flex-1 flex items-center justify-center gap-2 sm:gap-3">
+        {/* tablero centrado + panel lateral de mano */}
+        <div className="flex-1 flex min-h-0">
+          {/* tablero: las 3 líneas en el centro, con más aire vertical */}
+          <main className="flex-1 flex flex-col justify-center gap-4 sm:gap-7 px-2 sm:px-8 py-2 min-w-0">
+            {/* fila enemiga */}
+            <div className="flex items-center justify-center gap-3 sm:gap-6">
               {[0, 1, 2].map((l) => renderUnit('enemy', l))}
             </div>
-            <div className="w-10 sm:w-16" />
-          </div>
 
-          {/* divisor de fase */}
-          <div className="flex items-center justify-center gap-3 py-1">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blood-600/60 to-transparent" />
-            <p className="font-display text-base sm:text-xl px-3" style={{ color: state.phase.startsWith('deploy') ? '#6fe8ff' : '#ff8c3b', textShadow: '0 0 12px rgba(0,0,0,0.9)' }}>
-              {state.phase === 'deployPlayer' ? 'Despliegue — tu turno'
-                : state.phase === 'deployEnemy' ? 'El enemigo despliega…'
-                : state.phase === 'attackPlayer' ? 'Fase de ataque — elige atacante y presa'
-                : state.phase === 'attackEnemy' ? 'El enemigo ataca…' : 'Fin de la batalla'}
-            </p>
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blood-600/60 to-transparent" />
-          </div>
-
-          {/* fila del jugador */}
-          <div className="flex items-end justify-center gap-2 sm:gap-4">
-            <div className="w-10 sm:w-16" />
-            <div className="flex-1 flex items-center justify-center gap-2 sm:gap-3">
-              {[0, 1, 2].map((l) => renderUnit('player', l))}
+            {/* divisor de fase */}
+            <div className="flex items-center justify-center gap-3">
+              <div className="h-px flex-1 max-w-[11rem] bg-gradient-to-r from-transparent via-blood-600/60 to-transparent" />
+              <p className="font-display text-sm sm:text-lg px-2 text-center" style={{ color: state.phase.startsWith('deploy') ? '#6fe8ff' : '#ff8c3b', textShadow: '0 0 12px rgba(0,0,0,0.9)' }}>
+                {state.phase === 'deployPlayer' ? 'Despliegue — tu turno'
+                  : state.phase === 'deployEnemy' ? 'El enemigo despliega…'
+                  : state.phase === 'attackPlayer' ? 'Fase de ataque — elige atacante y presa'
+                  : state.phase === 'attackEnemy' ? 'El enemigo ataca…' : 'Fin de la batalla'}
+              </p>
+              <div className="h-px flex-1 max-w-[11rem] bg-gradient-to-r from-transparent via-blood-600/60 to-transparent" />
             </div>
-            {renderHero('player')}
-          </div>
 
-          {/* energía + acción + mano */}
-          <div className="flex flex-col items-center gap-1.5 pb-1">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1" title="Energía">
+            {/* fila del jugador */}
+            <div className="flex items-end justify-center gap-3 sm:gap-6">
+              {[0, 1, 2].map((l) => renderUnit('player', l))}
+              {renderHero('player')}
+            </div>
+          </main>
+
+          {/* panel derecho: inventario de la mano */}
+          <aside className="relative z-10 w-44 sm:w-52 md:w-60 shrink-0 flex flex-col gap-1.5 py-2.5 px-2 sm:px-3 border-l border-bone-500/15 bg-ink-950/60">
+            {/* energía */}
+            <div className="panel-dark px-2.5 py-2" style={{ clipPath: 'none' }}>
+              <div className="flex items-center justify-between">
+                <p className="font-display text-[0.65rem] uppercase tracking-widest text-bone-500">Energía</p>
+                <span className="font-display text-base text-frost-400 leading-none">{state.energy.player.cur}/{state.energy.player.max}</span>
+              </div>
+              <div className="flex items-center gap-1 mt-1.5 flex-wrap" title="Energía">
                 {Array.from({ length: state.energy.player.max }).map((_, i) => (
-                  <span key={i} className="w-3 h-3 rotate-45 border"
+                  <span key={i} className="w-2.5 h-2.5 rotate-45 border"
                     style={{
                       background: i < state.energy.player.cur ? 'linear-gradient(135deg, #6fe8ff, #2b7f9e)' : 'transparent',
                       borderColor: i < state.energy.player.cur ? '#6fe8ff' : 'rgba(111,232,255,0.3)',
@@ -586,42 +616,56 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
                     }} />
                 ))}
               </div>
-              <span className="font-display text-lg text-frost-400">{state.energy.player.cur}/{state.energy.player.max}</span>
-              {state.phase === 'deployPlayer' && !busy && (
-                <button onClick={endPlayerDeploy} className="btn-rune px-5 py-1.5 text-lg font-bold text-bone-100"
-                  style={{ background: 'linear-gradient(160deg, #155e6e, #0b3a45)', border: '1px solid rgba(111,232,255,0.5)', boxShadow: '0 0 14px rgba(111,232,255,0.25)' }}>
-                  Terminar despliegue
-                </button>
-              )}
-              {state.phase === 'attackPlayer' && !busy && (
-                <button onClick={endPlayerAttacks} className="btn-rune px-5 py-1.5 text-lg font-bold text-bone-100"
-                  style={{ background: 'linear-gradient(160deg, #8e3a15, #5c240b)', border: '1px solid rgba(255,140,59,0.5)', boxShadow: '0 0 14px rgba(255,140,59,0.3)' }}>
-                  Terminar ataque {ready > 0 ? `(${ready} listos)` : ''}
-                </button>
-              )}
             </div>
+
+            {/* guía contextual */}
             {selCard && (
-              <p className="font-body text-[0.62rem] uppercase tracking-widest text-frost-400 anim-slide-down">
+              <p className="font-body text-[0.58rem] uppercase tracking-widest text-frost-400 anim-slide-down px-1">
                 {selCard.kind === 'unit' ? 'Elige un carril vacío' : 'Elige el objetivo del hechizo'}
               </p>
             )}
             {selAttacker !== null && (
-              <p className="font-body text-[0.62rem] uppercase tracking-widest text-ember-400 anim-slide-down">
+              <p className="font-body text-[0.58rem] uppercase tracking-widest text-ember-400 anim-slide-down px-1">
                 Elige la presa: unidad enemiga{heroTargetable ? ' o el héroe' : ''}
               </p>
             )}
-            <div className="flex items-end justify-center overflow-x-auto max-w-full px-2" style={{ scrollbarWidth: 'none' }}>
+
+            {/* mano vertical */}
+            <p className="font-display text-[0.65rem] uppercase tracking-widest text-bone-500 px-1 mt-0.5">Mano · {state.hands.player.length}</p>
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-1 pb-2 flex flex-col items-center" style={{ scrollbarWidth: 'thin' }}>
               {state.hands.player.map((c, i) => (
-                <div key={`${c.id}-${i}`} className="anim-card-in card-hover-lift -mx-2 sm:-mx-1" style={{ animationDelay: `${i * 0.04}s` }}>
+                <div key={`${c.id}-${i}`}
+                  className={`relative anim-card-in transition-transform duration-150 hover:scale-105 hover:z-30 ${i > 0 ? '-mt-20 sm:-mt-24' : ''}`}
+                  style={{ animationDelay: `${i * 0.04}s`, zIndex: i + 1 }}>
                   <CardView card={c} playable={canAfford(state, 'player', c) && !busy && state.phase === 'deployPlayer' && !result} selected={sel === i} onClick={() => clickCard(i)} />
                 </div>
               ))}
               {state.hands.player.length === 0 && (
-                <p className="font-display text-bone-500 italic mb-8">Sin cartas en la mano</p>
+                <p className="font-display text-bone-500 italic mt-4">Sin cartas en la mano</p>
               )}
             </div>
-          </div>
-        </main>
+
+            {/* acciones */}
+            {state.phase === 'deployPlayer' && !busy && (
+              <button onClick={endPlayerDeploy} className="btn-rune w-full px-3 py-2 text-base sm:text-lg font-bold text-bone-100"
+                style={{ background: 'linear-gradient(160deg, #155e6e, #0b3a45)', border: '1px solid rgba(111,232,255,0.5)', boxShadow: '0 0 14px rgba(111,232,255,0.25)' }}>
+                Terminar despliegue
+              </button>
+            )}
+            {state.phase === 'attackPlayer' && !busy && (
+              <button onClick={endPlayerAttacks} className="btn-rune w-full px-3 py-2 text-base sm:text-lg font-bold text-bone-100"
+                style={{ background: 'linear-gradient(160deg, #8e3a15, #5c240b)', border: '1px solid rgba(255,140,59,0.5)', boxShadow: '0 0 14px rgba(255,140,59,0.3)' }}>
+                Terminar ataque {ready > 0 ? `(${ready} listos)` : ''}
+              </button>
+            )}
+
+            {/* mazos */}
+            <div className="flex items-center justify-between px-1 pb-0.5 text-bone-300">
+              <span className="flex items-center gap-1 font-display text-sm" title="Tu mazo"><Sigil icon="cards" className="w-3.5 h-3.5 text-frost-400" />{state.decks.player.length}</span>
+              <span className="flex items-center gap-1 font-display text-sm" title="Mazo enemigo"><Sigil icon="cards" className="w-3.5 h-3.5 text-blood-400" />{state.decks.enemy.length}</span>
+            </div>
+          </aside>
+        </div>
 
         {/* crónica */}
         <aside className="max-w-5xl w-full mx-auto px-3 sm:px-6 pb-3">
