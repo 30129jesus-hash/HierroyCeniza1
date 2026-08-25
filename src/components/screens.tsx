@@ -135,7 +135,7 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
   ];
 
   return (
-    <div className="bg-arena min-h-screen relative overflow-hidden flex">
+    <div className="bg-menu-img min-h-screen relative overflow-hidden flex">
       <div className="bg-vignette absolute inset-0 pointer-events-none" />
       <Embers n={22} />
       <div className="absolute top-0 right-[12%] w-px h-10 bg-gradient-to-b from-blood-600 to-transparent anim-drip" />

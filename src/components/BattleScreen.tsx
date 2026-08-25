@@ -506,7 +506,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
   /* ---------- render principal ---------- */
 
   return (
-    <div className="bg-arena min-h-screen relative overflow-hidden">
+    <div className="bg-arena with-img min-h-screen relative overflow-hidden">
       <div className="bg-vignette absolute inset-0 pointer-events-none z-0" />
 
       <div className={`relative z-10 min-h-screen flex flex-col ${shakeClass}`}>

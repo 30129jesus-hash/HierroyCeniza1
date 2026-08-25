@@ -56,6 +56,20 @@ body {
   background-size: cover;
   background-position: center;
 }
+/* campo de batalla: coliseo en ruinas bajo la luna de sangre */
+.bg-arena.with-img {
+  background-image:
+    linear-gradient(180deg, rgba(13, 10, 18, 0.55) 0%, rgba(13, 10, 18, 0.68) 55%, rgba(13, 10, 18, 0.9) 100%),
+    url('https://image.qwenlm.ai/generated-images/feacd449-9b09-47b1-8606-7d34cdd98e63/_result.png');
+}
+/* menú principal: el soldado de espaldas ante la fortaleza en llamas */
+.bg-menu-img {
+  background-image:
+    linear-gradient(180deg, rgba(13, 10, 18, 0.72) 0%, rgba(13, 10, 18, 0.42) 40%, rgba(13, 10, 18, 0.9) 100%),
+    url('https://image.qwenlm.ai/generated-images/fcae4e43-f34c-4392-a333-6325223f3c4b/_result.png');
+  background-size: cover;
+  background-position: center;
+}
 .bg-vignette {
   background: radial-gradient(120% 100% at 50% 45%, rgba(0, 0, 0, 0) 45%, rgba(5, 3, 8, 0.85) 100%);
 }
