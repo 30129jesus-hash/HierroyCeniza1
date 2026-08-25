@@ -42,6 +42,7 @@ export interface CardDef {
   rarity: Rarity;
   icon: string;      // clave del sigilo SVG
   hue: number;       // tinte principal del arte
+  art?: string;      // ruta al arte real (public/cards); sin ella se usa el sigilo
   text: string;      // descripción de reglas
   quote?: string;    // frase de ambientación
   vamp?: boolean;    // vampirismo

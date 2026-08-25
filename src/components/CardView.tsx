@@ -68,15 +68,27 @@ export default function CardView({ card, size = 'hand', playable = true, selecte
         <span className="font-display font-bold text-lg sm:text-xl" style={{ color: playable ? '#6fe8ff' : '#a8977a', textShadow: '0 0 8px rgba(111,232,255,0.5)' }}>{card.cost}</span>
       </div>
 
-      {/* arte: sigilo sobre círculo rúnico */}
+      {/* arte: imagen real (si existe) o sigilo sobre círculo rúnico */}
       <div className="absolute inset-x-2 top-6 sm:top-7 bottom-[38%] flex items-center justify-center overflow-hidden"
         style={{ background: `radial-gradient(80% 80% at 50% 45%, hsl(${card.hue} 65% 22% / 0.9), hsl(${card.hue} 40% 8% / 0.95) 75%)`, border: `1px solid ${rarC}44` }}>
-        <div className="absolute inset-0 flex items-center justify-center" style={{ color: `hsl(${card.hue} 80% 65% / 0.35)` }}>
-          <RuneRing className="w-[130%] h-[130%]" />
-        </div>
-        <div className="relative anim-bob" style={{ color: `hsl(${card.hue} 85% 68%)`, filter: `drop-shadow(0 0 8px hsl(${card.hue} 90% 55% / 0.7))` }}>
-          <Sigil icon={isUnit ? card.icon : (SCHOOL_ICON[card.spell?.school ?? 'fire'] ?? 'flask')} className={size === 'tiny' ? 'w-8 h-8' : 'w-10 h-10 sm:w-12 sm:h-12'} />
-        </div>
+        {card.art ? (
+          <>
+            <img src={card.art} alt={card.name} draggable={false} loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover" />
+            {/* viñeta + tinte: el nombre y la rareza siguen leyéndose sobre la imagen */}
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: `linear-gradient(180deg, hsl(${card.hue} 50% 12% / 0.18) 0%, rgba(13,10,18,0) 42%, hsl(${card.hue} 42% 6% / 0.82) 100%)`, boxShadow: 'inset 0 0 16px rgba(0,0,0,0.5)' }} />
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-0 flex items-center justify-center" style={{ color: `hsl(${card.hue} 80% 65% / 0.35)` }}>
+              <RuneRing className="w-[130%] h-[130%]" />
+            </div>
+            <div className="relative anim-bob" style={{ color: `hsl(${card.hue} 85% 68%)`, filter: `drop-shadow(0 0 8px hsl(${card.hue} 90% 55% / 0.7))` }}>
+              <Sigil icon={isUnit ? card.icon : (SCHOOL_ICON[card.spell?.school ?? 'fire'] ?? 'flask')} className={size === 'tiny' ? 'w-8 h-8' : 'w-10 h-10 sm:w-12 sm:h-12'} />
+            </div>
+          </>
+        )}
         {card.ranged && isUnit && (
           <div className="absolute top-0.5 left-1 text-gold-400" title="A distancia: puede atacar al héroe">
             <Sigil icon="bow" className="w-3 h-3" />

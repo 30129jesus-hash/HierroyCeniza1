@@ -374,13 +374,25 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
               : ready && isAttackPhase && side === 'player' ? '0 0 12px rgba(255,215,106,0.35)'
               : `0 4px 14px rgba(0,0,0,0.6), 0 0 ${u.frozen > 0 ? 14 : 6}px ${u.frozen > 0 ? 'rgba(111,232,255,0.5)' : u.poison > 0 ? 'rgba(157,255,87,0.4)' : 'rgba(0,0,0,0)'}`,
           }}>
-            <div className="absolute inset-0 flex items-center justify-center" style={{ color: `hsl(${u.def.hue} 80% 62% / 0.3)` }}>
-              <RuneRing className="w-[120%] h-[120%]" reverse={side === 'enemy'} />
-            </div>
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-              <div style={{ color: `hsl(${u.def.hue} 85% 66%)`, filter: `drop-shadow(0 0 7px hsl(${u.def.hue} 90% 55% / 0.8))` }}>
-                <Sigil icon={u.def.icon} className="w-8 h-8 sm:w-10 sm:h-10" />
+            {u.def.art ? (
+              <>
+                <img src={u.def.art} alt={u.def.name} draggable={false} loading="lazy"
+                  className="absolute inset-0 w-full h-full object-cover" />
+                {/* tinte oscuro: los números y el nombre siguen leyéndose sobre la imagen */}
+                <div className="absolute inset-0 pointer-events-none"
+                  style={{ background: `linear-gradient(180deg, hsl(${u.def.hue} 40% 10% / 0.4) 0%, hsl(${u.def.hue} 45% 7% / 0.6) 100%)` }} />
+              </>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center" style={{ color: `hsl(${u.def.hue} 80% 62% / 0.3)` }}>
+                <RuneRing className="w-[120%] h-[120%]" reverse={side === 'enemy'} />
               </div>
+            )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
+              {!u.def.art && (
+                <div style={{ color: `hsl(${u.def.hue} 85% 66%)`, filter: `drop-shadow(0 0 7px hsl(${u.def.hue} 90% 55% / 0.8))` }}>
+                  <Sigil icon={u.def.icon} className="w-8 h-8 sm:w-10 sm:h-10" />
+                </div>
+              )}
               <p className="font-display text-[0.6rem] sm:text-[0.66rem] text-bone-100 text-center leading-none px-1" style={{ textShadow: '0 1px 2px #000' }}>{u.def.name}</p>
             </div>
             <div className="absolute bottom-1 inset-x-0 flex items-center justify-center gap-1.5 font-display font-bold text-sm sm:text-base">

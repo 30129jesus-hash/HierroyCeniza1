@@ -1,10 +1,25 @@
 import type { AchDef, CardDef, ChallengeDef, PactDef, Rarity, RelicDef } from './types';
 
+/* ============ ARTE REAL DE CARTAS (opcional) ============
+   Convención: coloca el archivo en public/cards/{id}.png y añade su id a
+   WITH_ART (o pasa art: true / art: '/cards/ruta.jpg' por carta).
+   Las cartas sin arte siguen usando su sigilo procedural: nada se rompe. */
+const WITH_ART: string[] = [
+  // p. ej.: 'p_soldado', 'e_dragon',
+];
+
+export const cardArtUrl = (id: string): string => `/cards/${id}.png`;
+
+const resolveArt = (id: string, opt?: boolean | string): string | undefined => {
+  if (typeof opt === 'string') return opt;
+  return opt === true || WITH_ART.includes(id) ? cardArtUrl(id) : undefined;
+};
+
 const u = (
   id: string, name: string, side: CardDef['side'], cost: number,
   atk: number, hp: number, rarity: Rarity, icon: string, hue: number,
   tags: string[], text: string, quote?: string,
-  extra?: Partial<CardDef>,
+  extra?: Partial<Omit<CardDef, 'art'>> & { art?: boolean | string },
 ): CardDef => ({
   id, name, side, kind: 'unit', cost, atk, hp, def: extra?.def ?? 0, rarity, icon, hue,
   text: extra?.def ? `${text} · Defensa ${extra.def}` : text, quote, tags,
@@ -12,13 +27,15 @@ const u = (
   swift: extra?.swift, thorns: extra?.thorns,
   poisonAtk: extra?.poisonAtk, freezeAtk: extra?.freezeAtk, onDeath: extra?.onDeath,
   onPlay: extra?.onPlay,
+  art: resolveArt(id, extra?.art),
 });
 
 const s = (
   id: string, name: string, side: CardDef['side'], cost: number,
   rarity: Rarity, icon: string, hue: number, tags: string[],
   spell: NonNullable<CardDef['spell']>, text: string, quote?: string,
-): CardDef => ({ id, name, side, kind: 'spell', cost, rarity, icon, hue, tags, spell, text, quote });
+  art?: boolean | string,
+): CardDef => ({ id, name, side, kind: 'spell', cost, rarity, icon, hue, tags, spell, text, quote, art: resolveArt(id, art) });
 
 /* ================= CARTAS DEL JUGADOR ================= */
 
