@@ -531,7 +531,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
   /* ---------- render principal ---------- */
 
   return (
-    <div className="bg-arena min-h-screen relative overflow-hidden">
+    <div className="bg-arena with-img min-h-screen relative overflow-hidden">
       <div className="bg-vignette absolute inset-0 pointer-events-none z-0" />
 
       <div className={`relative z-10 min-h-screen flex flex-col ${shakeClass}`}>
@@ -652,15 +652,6 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
             </div>
           </div>
         </main>
-
-        {/* crónica */}
-        <aside className="max-w-5xl w-full mx-auto px-3 sm:px-6 pb-3">
-          <div className="panel-dark px-3 py-2 h-16 overflow-y-auto" style={{ clipPath: 'none' }}>
-            {state.log.slice(-6).map((l) => (
-              <p key={l.id} className="font-body text-[0.68rem] leading-snug" style={{ color: logToneColor[l.tone] }}>{l.text}</p>
-            ))}
-          </div>
-        </aside>
       </div>
 
       {/* capa de efectos */}
