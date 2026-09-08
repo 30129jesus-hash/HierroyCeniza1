@@ -50,8 +50,13 @@ body {
 .bg-arena {
   background-color: #0d0a12;
   background-image:
-    radial-gradient(120% 90% at 50% 0%, rgba(142, 21, 38, 0.28) 0%, rgba(13, 10, 18, 0) 55%),
-    radial-gradient(90% 70% at 85% 100%, rgba(242, 118, 46, 0.1) 0%, rgba(13, 10, 18, 0) 50%),
+    /* Patrón de runas y niebla oscura */
+    radial-gradient(circle at 20% 30%, rgba(142, 21, 38, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(111, 232, 255, 0.08) 0%, transparent 35%),
+    radial-gradient(circle at 50% 50%, rgba(157, 255, 87, 0.05) 0%, transparent 50%),
+    /* Textura de piedra antigua */
+    repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(168, 151, 122, 0.03) 2px, rgba(168, 151, 122, 0.03) 4px),
+    /* Gradiente base oscuro */
     linear-gradient(180deg, #171020 0%, #0d0a12 60%, #0a080e 100%);
   background-size: cover;
   background-position: center;

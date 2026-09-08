@@ -276,16 +276,18 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     if (sel === i) { setSel(null); return; }
     const card = state.hands.player[i];
     if (!canAfford(state, 'player', card)) { sfx.error(); return; }
-    if (card.kind === 'unit' || noTargetSpellOrAuto(card)) {
-      const targets = validTargets(state, 'player', card);
-      if (card.kind === 'unit' && targets.length === 0) { sfx.error(); return; }
-      const r = playCard(stateRef.current, 'player', i, targets[0] ?? null);
+    
+    // Hechizos sin objetivo se juegan automáticamente
+    if (noTargetSpellOrAuto(card)) {
+      const r = playCard(stateRef.current, 'player', i, null);
       applyState(r.state);
       processEvents(r.events);
       sfx.card();
       setSel(null);
       return;
     }
+    
+    // Unidades y hechizos con objetivo requieren selección manual
     setSel(i);
     sfx.click();
   };
@@ -307,6 +309,19 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
   const clickUnit = (side: Side, lane: number) => {
     if (busy || result) return;
     sfx.unlock();
+    
+    // Colocación manual de unidad seleccionada
+    if (state.phase === 'deployPlayer' && sel !== null && selCard && selCard.kind === 'unit') {
+      if (side === 'player' && !state.units[slotOf('player', lane)]) {
+        const r = playCard(stateRef.current, 'player', sel, { kind: 'lane', side: 'player', lane });
+        applyState(r.state);
+        processEvents(r.events);
+        sfx.card();
+        setSel(null);
+        return;
+      }
+    }
+    
     // hechizo con objetivo
     if (state.phase === 'deployPlayer' && tryPlayOnTarget({ kind: 'lane', side, lane })) return;
     // ataque: seleccionar atacante
@@ -368,6 +383,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     const t: Target = { kind: 'lane', side, lane };
     const spellTargetable = state.phase === 'deployPlayer' && sel !== null && isSpellTarget(t);
     const atkTargetable = isAttackPhase && side === 'enemy' && selAttacker !== null && isAtkTarget(t);
+    const unitPlaceable = state.phase === 'deployPlayer' && sel !== null && selCard?.kind === 'unit' && side === 'player' && !u;
     const selectable = isAttackPhase && side === 'player' && !!u && u.ready && (!u.fresh || u.swift) && u.frozen <= 0;
     const isSel = selAttacker === lane && side === 'player';
     const lunging = lunge && ((side === 'player' && lunge.lane === lane) || (side === 'enemy' && lunge.lane === slot - 3));
@@ -376,26 +392,33 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
       <div key={slot} className="relative flex-1 max-w-[7.5rem] aspect-[3/4]">
         <button
           onClick={() => clickUnit(side, lane)}
-          disabled={!u && !(state.phase === 'deployPlayer' && selCard?.kind === 'unit')}
-          className={`absolute inset-0 no-select ${u ? 'cursor-pointer' : 'cursor-default'} ${lunging ? (lunge!.dir === 'up' ? 'anim-lunge-up' : 'anim-lunge-down') : ''}`}
+          disabled={!u && !unitPlaceable}
+          className={`absolute inset-0 no-select ${u || unitPlaceable ? 'cursor-pointer' : 'cursor-default'} ${lunging ? (lunge!.dir === 'up' ? 'anim-lunge-up' : 'anim-lunge-down') : ''}`}
           aria-label={u ? u.def.name : 'Carril vacío'}
         >
-          <div className={`absolute inset-0 transition-all ${spellTargetable || atkTargetable ? 'anim-target' : ''} ${selectable && !isSel ? 'anim-glow' : ''}`}
+          <div className={`absolute inset-0 transition-all ${spellTargetable || atkTargetable || unitPlaceable ? 'anim-target' : ''} ${selectable && !isSel ? 'anim-glow' : ''}`}
             style={{
               background: u ? `linear-gradient(170deg, hsl(${u.def.hue} 30% 16%), #0d0a12)` : 'rgba(30,23,41,0.35)',
               border: `1.5px ${u ? 'solid' : 'dashed'} ${isSel ? '#ffd76a'
                 : atkTargetable ? '#ff8c3b'
                 : spellTargetable ? '#6fe8ff'
+                : unitPlaceable ? '#9dff57'
                 : u ? (u.frozen > 0 ? '#6fe8ff' : u.poison > 0 ? '#9dff57' : `${RARITY_COLOR[u.def.rarity]}88`)
                 : 'rgba(168,151,122,0.25)'}`,
               boxShadow: isSel ? '0 0 18px rgba(255,215,106,0.6)'
                 : atkTargetable ? '0 0 16px rgba(255,140,59,0.55)'
                 : spellTargetable ? '0 0 14px rgba(111,232,255,0.5)'
+                : unitPlaceable ? '0 0 14px rgba(157,255,87,0.5)'
                 : '0 4px 14px rgba(0,0,0,0.6)',
             }}>
             {!u && (
               <div className="absolute inset-0 flex items-center justify-center text-bone-500/30">
                 <RuneRing className="w-3/4 h-3/4" />
+              </div>
+            )}
+            {unitPlaceable && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="font-body text-[0.6rem] uppercase tracking-widest text-venom-400">Colocar aquí</span>
               </div>
             )}
             {u && (
@@ -544,7 +567,12 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
         </header>
 
         {/* tablero */}
-        <main className="flex-1 flex flex-col justify-between max-w-5xl w-full mx-auto px-2 sm:px-6 py-3 gap-2">
+        <main className="flex-1 flex flex-col justify-between max-w-5xl w-full mx-auto px-2 sm:px-6 py-3 gap-2 relative">
+          {/* Círculo rúnico decorativo de fondo */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+            <RuneRing className="w-96 h-96 text-gold-400" />
+          </div>
+          
           {/* fila enemiga */}
           <div className="flex items-start justify-center gap-2 sm:gap-4">
             {renderHero('enemy')}
