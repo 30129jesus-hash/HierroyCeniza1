@@ -141,11 +141,8 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
       <div className="absolute top-0 right-[12%] w-px h-10 bg-gradient-to-b from-blood-600 to-transparent anim-drip" />
       <div className="absolute top-0 right-[30%] w-px h-16 bg-gradient-to-b from-blood-600 to-transparent anim-drip" style={{ animationDelay: '1.1s' }} />
 
-      {/* velo lateral para legibilidad del menú sobre la ilustración */}
-      <div className="absolute inset-y-0 left-0 w-full max-w-3xl pointer-events-none bg-gradient-to-r from-ink-950/90 via-ink-950/60 to-transparent" />
-
       <div className="relative z-10 flex flex-col justify-center px-6 sm:px-16 py-10 w-full max-w-2xl">
-        <p className="font-body text-[0.7rem] uppercase tracking-[0.5em] text-blood-400 mb-2 anim-slide-down" style={{ textShadow: '0 1px 4px #000' }}>Un reino en cenizas</p>
+        <p className="font-body text-[0.7rem] uppercase tracking-[0.5em] text-blood-400 mb-2 anim-slide-down">Un reino en cenizas</p>
         <h1 className="font-display text-6xl sm:text-8xl leading-[0.9] text-bone-100 text-glow-ember anim-slide-down">
           Hierro <span className="text-blood-500">&amp;</span> Ceniza
         </h1>
