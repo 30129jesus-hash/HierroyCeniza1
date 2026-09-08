@@ -148,6 +148,7 @@ export type BattleEvent =
   | { t: 'death'; side: Side; lane: number }
   | { t: 'buff'; side: Side; lane: number; label: string }
   | { t: 'draw'; side: Side }
+  | { t: 'deckShuffle'; side: Side }
   | { t: 'attack'; side: Side; lane: number; tSide: Side; tLane: number | null }
   | { t: 'log'; text: string; tone: LogEntry['tone'] }
   | { t: 'victory'; winner: Side };

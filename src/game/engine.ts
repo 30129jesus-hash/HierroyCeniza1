@@ -60,12 +60,13 @@ export function createBattle(cfg: BattleConfig): BattleState {
 
 /* ============ ROBO (rearma el mazo al agotarse) ============ */
 
-export function draw(s: BattleState, side: Side, n: number): number {
+export function draw(s: BattleState, side: Side, n: number, events?: BattleEvent[]): number {
   let drawn = 0;
   for (let i = 0; i < n; i++) {
     if (s.hands[side].length >= 8) break;
     if (s.decks[side].length === 0) {
       s.decks[side] = shuffle([...s.baseDecks[side]]);
+      if (events) events.push({ t: 'deckShuffle', side });
       log(s, side === 'player' ? 'Tu mazo se rearma al azar desde el pozo de guerra.' : 'El mazo enemigo se rearma.', 'sys');
     }
     const card = s.decks[side].shift();
@@ -295,7 +296,7 @@ function triggerOnPlay(s: BattleState, side: Side, card: CardDef, lane: number, 
       break;
     }
     case 'draw': {
-      draw(s, side, op.amount);
+      draw(s, side, op.amount, events);
       events.push({ t: 'draw', side });
       break;
     }
@@ -427,7 +428,7 @@ function castSpell(s: BattleState, side: Side, card: CardDef, t: Target, events:
     }
     case 'forbidden': {
       log(s, `${name}: robas ${sp.amount} cartas, pero pagas con sangre.`, side === 'player' ? 'good' : 'bad');
-      draw(s, side, sp.amount);
+      draw(s, side, sp.amount, events);
       events.push({ t: 'draw', side });
       damageHero(s, side, sp.amount2 ?? 2, events);
       break;
@@ -705,9 +706,9 @@ export function endRound(s: BattleState): PlayResult {
       healHero(s, 'player', 2, events);
     }
 
-    draw(s, 'player', 1);
-    draw(s, 'enemy', 1);
-    if (relics.includes('rel_sabiduria')) draw(s, 'player', 1);
+    draw(s, 'player', 1, events);
+    draw(s, 'enemy', 1, events);
+    if (relics.includes('rel_sabiduria')) draw(s, 'player', 1, events);
     events.push({ t: 'draw', side: 'player' });
 
     s.phase = 'deployPlayer';

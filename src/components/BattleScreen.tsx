@@ -65,6 +65,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
   const [fx, setFx] = useState<FxItem[]>([]);
   const [shakeClass, setShakeClass] = useState('');
   const [lunge, setLunge] = useState<{ lane: number; dir: 'up' | 'down' } | null>(null);
+  const [deckShuffling, setDeckShuffling] = useState(false);
   const fxSeq = useRef(0);
   const { meta, dispatch } = useMeta();
 
@@ -166,6 +167,13 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
           break;
         case 'draw':
           sfx.draw();
+          break;
+        case 'deckShuffle':
+          if (e.side === 'player') {
+            sfx.card();
+            setDeckShuffling(true);
+            setTimeout(() => setDeckShuffling(false), 800);
+          }
           break;
         case 'attack':
           setLunge({ lane: e.lane, dir: e.side === 'player' ? 'up' : 'down' });
@@ -571,6 +579,31 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
           {/* Círculo rúnico decorativo de fondo */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
             <RuneRing className="w-96 h-96 text-gold-400" />
+          </div>
+          
+          {/* Mazo del jugador - esquina inferior izquierda */}
+          <div className="absolute bottom-4 left-4 flex flex-col items-center gap-1">
+            <div className="relative">
+              {/* Cartas apiladas visualmente */}
+              <div className={`relative w-16 h-20 ${deckShuffling ? 'animate-pulse' : ''}`}>
+                <div className={`absolute inset-0 bg-gradient-to-br from-ink-700 to-ink-900 border-2 border-frost-400/50 rounded-lg shadow-lg transform rotate-2 ${deckShuffling ? 'animate-bounce' : ''}`} />
+                <div className={`absolute inset-0 bg-gradient-to-br from-ink-700 to-ink-900 border-2 border-frost-400/60 rounded-lg shadow-lg transform -rotate-1 ${deckShuffling ? 'animate-bounce' : ''}`} style={{ animationDelay: '0.1s' }} />
+                <div className={`absolute inset-0 bg-gradient-to-br from-ink-600 to-ink-800 border-2 ${deckShuffling ? 'border-gold-400' : 'border-frost-400'} rounded-lg shadow-xl flex items-center justify-center transition-colors`}>
+                  <Sigil icon="cards" className={`w-8 h-8 ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`} />
+                </div>
+              </div>
+              {/* Contador de cartas */}
+              <div className={`absolute -bottom-2 -right-2 bg-ink-950 border-2 ${deckShuffling ? 'border-gold-400' : 'border-frost-400'} rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors`}>
+                <span className={`font-display text-sm font-bold ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`}>{state.decks.player.length}</span>
+              </div>
+              {/* Indicador de rearmado */}
+              {deckShuffling && (
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gold-400/90 text-ink-950 px-2 py-1 rounded text-xs font-bold whitespace-nowrap animate-pulse">
+                  ¡Rearmado!
+                </div>
+              )}
+            </div>
+            <span className="font-body text-xs text-frost-400/80 uppercase tracking-wider">Mazo</span>
           </div>
           
           {/* fila enemiga */}
