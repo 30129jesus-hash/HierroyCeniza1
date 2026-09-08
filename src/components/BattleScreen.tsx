@@ -397,7 +397,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     const lunging = lunge && ((side === 'player' && lunge.lane === lane) || (side === 'enemy' && lunge.lane === slot - 3));
 
     return (
-      <div key={slot} className="relative flex-1 max-w-[7.5rem] aspect-[3/4]">
+      <div key={slot} className="relative flex-1 max-w-[5.5rem] sm:max-w-[7.5rem] aspect-[3/4]">
         <button
           onClick={() => clickUnit(side, lane)}
           disabled={!u && !unitPlaceable}
@@ -506,29 +506,29 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     const clickable = isEnemy ? (heroTargetable || (state.phase === 'deployPlayer' && sel !== null && isSpellTarget({ kind: 'hero', side }))) : (state.phase === 'deployPlayer' && sel !== null && isSpellTarget({ kind: 'hero', side }));
     return (
       <button onClick={isEnemy ? clickEnemyHero : clickOwnHero}
-        className={`relative no-select ${clickable ? 'cursor-pointer' : 'cursor-default'} ${!isEnemy ? 'w-36 sm:w-44' : 'w-36 sm:w-44'}`}>
-        <div className={`panel-dark p-2.5 sm:p-3 text-left transition-all ${clickable ? 'anim-target' : ''}`}
-          style={{ borderColor: isEnemy ? 'rgba(224,47,69,0.45)' : 'rgba(232,182,76,0.4)', clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}>
-          <div className="flex items-center gap-2">
+        className={`relative no-select ${clickable ? 'cursor-pointer' : 'cursor-default'} w-24 sm:w-36 md:w-44 shrink-0`}>
+        <div className={`panel-dark p-1.5 sm:p-2.5 md:p-3 text-left transition-all ${clickable ? 'anim-target' : ''}`}
+          style={{ borderColor: isEnemy ? 'rgba(224,47,69,0.45)' : 'rgba(232,182,76,0.4)', clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}>
+          <div className="flex items-center gap-1 sm:gap-2">
             <span className="shrink-0" style={{ color: isEnemy ? `hsl(${cfg.enemyHue} 80% 62%)` : '#ffd76a', filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.8))' }}>
-              <Sigil icon={isEnemy ? cfg.enemyIcon : 'sun'} className="w-7 h-7 sm:w-8 sm:h-8" />
+              <Sigil icon={isEnemy ? cfg.enemyIcon : 'sun'} className="w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-sm sm:text-base leading-tight text-bone-100 truncate">{isEnemy ? cfg.enemyHeroName : 'Comandante'}</p>
-              <p className="font-display text-base sm:text-lg leading-none" style={{ color: hp / max > 0.4 ? '#ff4d5e' : '#8e1526' }}>
-                {hp}<span className="text-bone-500 text-xs">/{max}</span>
+              <p className="font-display text-[0.65rem] sm:text-sm md:text-base leading-tight text-bone-100 truncate">{isEnemy ? cfg.enemyHeroName : 'Comandante'}</p>
+              <p className="font-display text-sm sm:text-base md:text-lg leading-none" style={{ color: hp / max > 0.4 ? '#ff4d5e' : '#8e1526' }}>
+                {hp}<span className="text-bone-500 text-[0.6rem] sm:text-xs">/{max}</span>
               </p>
             </div>
           </div>
-          <div className="mt-1.5 h-1.5 bg-ink-950 overflow-hidden">
+          <div className="mt-1 sm:mt-1.5 h-1 sm:h-1.5 bg-ink-950 overflow-hidden">
             <div className="hp-bar-fill h-full" style={{ width: `${(hp / max) * 100}%`, background: 'linear-gradient(90deg, #8e1526, #e02f45)' }} />
           </div>
           {isEnemy && !isAttackPhase && sel === null && tauntedByFoe && (
-            <p className="font-body text-[0.5rem] uppercase tracking-wider text-frost-400 mt-1">Provocación activa</p>
+            <p className="font-body text-[0.45rem] sm:text-[0.5rem] uppercase tracking-wider text-frost-400 mt-0.5 sm:mt-1">Provocación</p>
           )}
           {isEnemy && isAttackPhase && selAttacker !== null && !heroTargetable && (
-            <p className="font-body text-[0.5rem] uppercase tracking-wider text-bone-500 mt-1">
-              {tauntedByFoe ? 'Provocación lo protege' : 'Solo a distancia'}
+            <p className="font-body text-[0.45rem] sm:text-[0.5rem] uppercase tracking-wider text-bone-500 mt-0.5 sm:mt-1">
+              {tauntedByFoe ? 'Provocado' : 'A distancia'}
             </p>
           )}
         </div>
@@ -543,34 +543,34 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
       <div className="bg-vignette absolute inset-0 pointer-events-none z-0" />
 
       <div className={`relative z-10 min-h-screen flex flex-col ${shakeClass}`}>
-        {/* cabecera */}
-        <header className="flex items-center justify-between gap-2 px-3 sm:px-6 py-2.5 border-b border-bone-500/15 bg-ink-950/70">
-          <div className="flex items-center gap-2 min-w-0">
+        {/* cabecera - compacta en móvil */}
+        <header className="flex items-center justify-between gap-1.5 sm:gap-2 px-2 sm:px-6 py-1.5 sm:py-2.5 border-b border-bone-500/15 bg-ink-950/70">
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
             <button onClick={() => { sfx.click(); setShowConcede(true); }}
-              className="btn-rune px-2.5 py-1 text-sm bg-ink-700 text-bone-300 border border-bone-500/25 flex items-center gap-1">
-              <Sigil icon="back" className="w-3.5 h-3.5" /> Rendirse
+              className="btn-rune px-1.5 sm:px-2.5 py-1 text-xs sm:text-sm bg-ink-700 text-bone-300 border border-bone-500/25 flex items-center gap-0.5 sm:gap-1">
+              <Sigil icon="back" className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">Rendirse</span>
             </button>
             <button onClick={() => { sfx.click(); dispatch({ type: 'toggleMusic' }); }}
               title="Música ambiental"
-              className="btn-rune px-2 py-1 bg-ink-700 border border-bone-500/25"
+              className="btn-rune px-1.5 sm:px-2 py-1 bg-ink-700 border border-bone-500/25"
               style={{ color: meta.musicOn ? '#ffd76a' : '#4a4358' }}>
-              <Sigil icon="wave" className="w-4 h-4" />
+              <Sigil icon="wave" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
             <button onClick={() => { sfx.click(); setShowHelp(true); }}
-              className="btn-rune px-2 py-1 bg-ink-700 text-bone-300 border border-bone-500/25">
-              <Sigil icon="help" className="w-4 h-4" />
+              className="btn-rune px-1.5 sm:px-2 py-1 bg-ink-700 text-bone-300 border border-bone-500/25">
+              <Sigil icon="help" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
-          <div className="text-center min-w-0">
-            <p className="font-display text-lg sm:text-2xl text-gold-400 text-glow-gold leading-none truncate">{cfg.title}</p>
-            <p className="font-body text-[0.6rem] uppercase tracking-widest text-bone-500">
+          <div className="text-center min-w-0 flex-1">
+            <p className="font-display text-sm sm:text-2xl text-gold-400 text-glow-gold leading-none truncate">{cfg.title}</p>
+            <p className="font-body text-[0.5rem] sm:text-[0.6rem] uppercase tracking-widest text-bone-500">
               Ronda <b className="text-bone-100">{Math.min(state.round, cfg.maxRounds)}</b>/{cfg.maxRounds}
-              {(cfg.relics ?? []).length > 0 && <span className="text-gold-400"> · {(cfg.relics ?? []).map((r) => RELIC_LOOKUP[r] ?? '◆').join(' ')}</span>}
+              {(cfg.relics ?? []).length > 0 && <span className="text-gold-400 hidden sm:inline"> · {(cfg.relics ?? []).map((r) => RELIC_LOOKUP[r] ?? '◆').join(' ')}</span>}
             </p>
           </div>
-          <div className="flex items-center gap-3 text-bone-300">
-            <span className="flex items-center gap-1 font-display" title="Mazo enemigo"><Sigil icon="cards" className="w-4 h-4 text-blood-400" />{state.decks.enemy.length}</span>
-            <span className="flex items-center gap-1 font-display" title="Tu mazo"><Sigil icon="cards" className="w-4 h-4 text-frost-400" />{state.decks.player.length}</span>
+          <div className="flex items-center gap-2 sm:gap-3 text-bone-300">
+            <span className="flex items-center gap-0.5 sm:gap-1 font-display text-xs sm:text-base" title="Mazo enemigo"><Sigil icon="cards" className="w-3 h-3 sm:w-4 sm:h-4 text-blood-400" />{state.decks.enemy.length}</span>
+            <span className="flex items-center gap-0.5 sm:gap-1 font-display text-xs sm:text-base" title="Tu mazo"><Sigil icon="cards" className="w-3 h-3 sm:w-4 sm:h-4 text-frost-400" />{state.decks.player.length}</span>
           </div>
         </header>
 
@@ -581,67 +581,67 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
             <RuneRing className="w-96 h-96 text-gold-400" />
           </div>
           
-          {/* Mazo del jugador - esquina inferior izquierda */}
-          <div className="absolute bottom-4 left-4 flex flex-col items-center gap-1">
+          {/* Mazo del jugador - esquina superior izquierda (móvil) / inferior izquierda (desktop) */}
+          <div className="absolute top-20 sm:bottom-4 left-2 sm:left-4 flex flex-col items-center gap-0.5 sm:gap-1">
             <div className="relative">
-              {/* Cartas apiladas visualmente */}
-              <div className={`relative w-16 h-20 ${deckShuffling ? 'animate-pulse' : ''}`}>
+              {/* Cartas apiladas visualmente - más pequeñas en móvil */}
+              <div className={`relative w-12 h-16 sm:w-16 sm:h-20 ${deckShuffling ? 'animate-pulse' : ''}`}>
                 <div className={`absolute inset-0 bg-gradient-to-br from-ink-700 to-ink-900 border-2 border-frost-400/50 rounded-lg shadow-lg transform rotate-2 ${deckShuffling ? 'animate-bounce' : ''}`} />
                 <div className={`absolute inset-0 bg-gradient-to-br from-ink-700 to-ink-900 border-2 border-frost-400/60 rounded-lg shadow-lg transform -rotate-1 ${deckShuffling ? 'animate-bounce' : ''}`} style={{ animationDelay: '0.1s' }} />
                 <div className={`absolute inset-0 bg-gradient-to-br from-ink-600 to-ink-800 border-2 ${deckShuffling ? 'border-gold-400' : 'border-frost-400'} rounded-lg shadow-xl flex items-center justify-center transition-colors`}>
-                  <Sigil icon="cards" className={`w-8 h-8 ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`} />
+                  <Sigil icon="cards" className={`w-6 h-6 sm:w-8 sm:h-8 ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`} />
                 </div>
               </div>
               {/* Contador de cartas */}
-              <div className={`absolute -bottom-2 -right-2 bg-ink-950 border-2 ${deckShuffling ? 'border-gold-400' : 'border-frost-400'} rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors`}>
-                <span className={`font-display text-sm font-bold ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`}>{state.decks.player.length}</span>
+              <div className={`absolute -bottom-1.5 -right-1.5 sm:-bottom-2 sm:-right-2 bg-ink-950 border-2 ${deckShuffling ? 'border-gold-400' : 'border-frost-400'} rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg transition-colors`}>
+                <span className={`font-display text-xs sm:text-sm font-bold ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`}>{state.decks.player.length}</span>
               </div>
               {/* Indicador de rearmado */}
               {deckShuffling && (
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gold-400/90 text-ink-950 px-2 py-1 rounded text-xs font-bold whitespace-nowrap animate-pulse">
+                <div className="absolute -top-6 sm:-top-8 left-1/2 -translate-x-1/2 bg-gold-400/90 text-ink-950 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[0.6rem] sm:text-xs font-bold whitespace-nowrap animate-pulse">
                   ¡Rearmado!
                 </div>
               )}
             </div>
-            <span className="font-body text-xs text-frost-400/80 uppercase tracking-wider">Mazo</span>
+            <span className="font-body text-[0.6rem] sm:text-xs text-frost-400/80 uppercase tracking-wider">Mazo</span>
           </div>
           
           {/* fila enemiga */}
-          <div className="flex items-start justify-center gap-2 sm:gap-4">
+          <div className="flex items-start justify-center gap-1 sm:gap-2 md:gap-4">
             {renderHero('enemy')}
-            <div className="flex-1 flex items-center justify-center gap-2 sm:gap-3">
+            <div className="flex-1 flex items-center justify-center gap-1 sm:gap-2 md:gap-3">
               {[0, 1, 2].map((l) => renderUnit('enemy', l))}
             </div>
-            <div className="w-10 sm:w-16" />
+            <div className="w-8 sm:w-10 md:w-16" />
           </div>
 
           {/* divisor de fase */}
-          <div className="flex items-center justify-center gap-3 py-1">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 py-0.5 sm:py-1">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blood-600/60 to-transparent" />
-            <p className="font-display text-base sm:text-xl px-3" style={{ color: state.phase.startsWith('deploy') ? '#6fe8ff' : '#ff8c3b', textShadow: '0 0 12px rgba(0,0,0,0.9)' }}>
-              {state.phase === 'deployPlayer' ? 'Despliegue — tu turno'
-                : state.phase === 'deployEnemy' ? 'El enemigo despliega…'
-                : state.phase === 'attackPlayer' ? 'Fase de ataque — elige atacante y presa'
-                : state.phase === 'attackEnemy' ? 'El enemigo ataca…' : 'Fin de la batalla'}
+            <p className="font-display text-[0.65rem] sm:text-base md:text-xl px-1.5 sm:px-3 text-center" style={{ color: state.phase.startsWith('deploy') ? '#6fe8ff' : '#ff8c3b', textShadow: '0 0 12px rgba(0,0,0,0.9)' }}>
+              {state.phase === 'deployPlayer' ? 'Tu despliegue'
+                : state.phase === 'deployEnemy' ? 'Enemigo despliega…'
+                : state.phase === 'attackPlayer' ? 'Tu ataque — elige presa'
+                : state.phase === 'attackEnemy' ? 'Enemigo ataca…' : 'Fin'}
             </p>
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blood-600/60 to-transparent" />
           </div>
 
           {/* fila del jugador */}
-          <div className="flex items-end justify-center gap-2 sm:gap-4">
-            <div className="w-10 sm:w-16" />
-            <div className="flex-1 flex items-center justify-center gap-2 sm:gap-3">
+          <div className="flex items-end justify-center gap-1 sm:gap-2 md:gap-4">
+            <div className="w-8 sm:w-10 md:w-16" />
+            <div className="flex-1 flex items-center justify-center gap-1 sm:gap-2 md:gap-3">
               {[0, 1, 2].map((l) => renderUnit('player', l))}
             </div>
             {renderHero('player')}
           </div>
 
           {/* energía + acción + mano */}
-          <div className="flex flex-col items-center gap-1.5 pb-1">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1" title="Energía">
+          <div className="flex flex-col items-center gap-1 sm:gap-1.5 pb-1">
+            <div className="flex items-center gap-1.5 sm:gap-3">
+              <div className="flex items-center gap-0.5 sm:gap-1" title="Energía">
                 {Array.from({ length: state.energy.player.max }).map((_, i) => (
-                  <span key={i} className="w-3 h-3 rotate-45 border"
+                  <span key={i} className="w-2 h-2 sm:w-3 sm:h-3 rotate-45 border"
                     style={{
                       background: i < state.energy.player.cur ? 'linear-gradient(135deg, #6fe8ff, #2b7f9e)' : 'transparent',
                       borderColor: i < state.energy.player.cur ? '#6fe8ff' : 'rgba(111,232,255,0.3)',
@@ -649,38 +649,40 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
                     }} />
                 ))}
               </div>
-              <span className="font-display text-lg text-frost-400">{state.energy.player.cur}/{state.energy.player.max}</span>
+              <span className="font-display text-sm sm:text-lg text-frost-400">{state.energy.player.cur}/{state.energy.player.max}</span>
               {state.phase === 'deployPlayer' && !busy && (
-                <button onClick={endPlayerDeploy} className="btn-rune px-5 py-1.5 text-lg font-bold text-bone-100"
+                <button onClick={endPlayerDeploy} className="btn-rune px-2 sm:px-5 py-1 sm:py-1.5 text-xs sm:text-lg font-bold text-bone-100"
                   style={{ background: 'linear-gradient(160deg, #155e6e, #0b3a45)', border: '1px solid rgba(111,232,255,0.5)', boxShadow: '0 0 14px rgba(111,232,255,0.25)' }}>
-                  Terminar despliegue
+                  <span className="hidden sm:inline">Terminar despliegue</span>
+                  <span className="sm:hidden">Desplegar ✓</span>
                 </button>
               )}
               {state.phase === 'attackPlayer' && !busy && (
-                <button onClick={endPlayerAttacks} className="btn-rune px-5 py-1.5 text-lg font-bold text-bone-100"
+                <button onClick={endPlayerAttacks} className="btn-rune px-2 sm:px-5 py-1 sm:py-1.5 text-xs sm:text-lg font-bold text-bone-100"
                   style={{ background: 'linear-gradient(160deg, #8e3a15, #5c240b)', border: '1px solid rgba(255,140,59,0.5)', boxShadow: '0 0 14px rgba(255,140,59,0.3)' }}>
-                  Terminar ataque {ready > 0 ? `(${ready} listos)` : ''}
+                  <span className="hidden sm:inline">Terminar ataque {ready > 0 ? `(${ready})` : ''}</span>
+                  <span className="sm:hidden">Atacar ✓{ready > 0 ? ` (${ready})` : ''}</span>
                 </button>
               )}
             </div>
             {selCard && (
-              <p className="font-body text-[0.62rem] uppercase tracking-widest text-frost-400 anim-slide-down">
+              <p className="font-body text-[0.5rem] sm:text-[0.62rem] uppercase tracking-widest text-frost-400 anim-slide-down">
                 {selCard.kind === 'unit' ? 'Elige un carril vacío' : 'Elige el objetivo del hechizo'}
               </p>
             )}
             {selAttacker !== null && (
-              <p className="font-body text-[0.62rem] uppercase tracking-widest text-ember-400 anim-slide-down">
-                Elige la presa: unidad enemiga{heroTargetable ? ' o el héroe' : ''}
+              <p className="font-body text-[0.5rem] sm:text-[0.62rem] uppercase tracking-widest text-ember-400 anim-slide-down">
+                Elige la presa{heroTargetable ? ' (unidad o héroe)' : ''}
               </p>
             )}
-            <div className="flex items-end justify-center overflow-x-auto max-w-full px-2" style={{ scrollbarWidth: 'none' }}>
+            <div className="flex items-end justify-center overflow-x-auto max-w-full px-1 sm:px-2" style={{ scrollbarWidth: 'none' }}>
               {state.hands.player.map((c, i) => (
-                <div key={`${c.id}-${i}`} className="anim-card-in card-hover-lift -mx-2 sm:-mx-1" style={{ animationDelay: `${i * 0.04}s` }}>
-                  <CardView card={c} playable={canAfford(state, 'player', c) && !busy && state.phase === 'deployPlayer' && !result} selected={sel === i} onClick={() => clickCard(i)} />
+                <div key={`${c.id}-${i}`} className="anim-card-in card-hover-lift -mx-3 sm:-mx-2 md:-mx-1" style={{ animationDelay: `${i * 0.04}s` }}>
+                  <CardView card={c} size="hand" playable={canAfford(state, 'player', c) && !busy && state.phase === 'deployPlayer' && !result} selected={sel === i} onClick={() => clickCard(i)} />
                 </div>
               ))}
               {state.hands.player.length === 0 && (
-                <p className="font-display text-bone-500 italic mb-8">Sin cartas en la mano</p>
+                <p className="font-display text-bone-500 italic text-sm sm:text-base mb-8">Sin cartas en la mano</p>
               )}
             </div>
           </div>

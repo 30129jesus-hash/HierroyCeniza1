@@ -32,7 +32,7 @@ export default function CardView({ card, size = 'hand', playable = true, selecte
   const legendary = card.rarity === 'legendaria';
   const frameAnim = frame?.anim && frame.anim !== 'none' ? `anim-frame-${frame.anim}` : '';
   const isUnit = card.kind === 'unit';
-  const w = size === 'shop' ? 'w-40 h-56' : size === 'tiny' ? 'w-24 h-32' : 'w-[7.2rem] h-[10.2rem] sm:w-32 sm:h-44';
+  const w = size === 'shop' ? 'w-40 h-56' : size === 'tiny' ? 'w-24 h-32' : 'w-[5.5rem] h-[7.8rem] sm:w-[7.2rem] sm:h-[10.2rem] md:w-32 md:h-44';
 
   const dimFilter = dimmed || !playable ? ' saturate(0.35) brightness(0.55)' : '';
   const glowFilter = rarHalo > 0 && !dimmed && playable ? `drop-shadow(0 0 ${rarHalo}px ${rarGlow})` : '';

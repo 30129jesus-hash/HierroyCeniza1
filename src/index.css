@@ -35,6 +35,24 @@ body {
   color: #cbbda0;
   font-family: var(--font-body);
   overflow-x: hidden;
+  /* Prevenir zoom en móvil */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Prevenir scroll bounce en iOS */
+  overscroll-behavior: none;
+}
+
+/* Mejorar experiencia en móvil horizontal */
+@media (orientation: landscape) and (max-height: 500px) {
+  html, body {
+    height: 100vh;
+    overflow: hidden;
+  }
+}
+
+/* Prevenir selección de texto en móvil */
+* {
+  -webkit-touch-callout: none;
 }
 
 .font-display { font-family: var(--font-display); }
