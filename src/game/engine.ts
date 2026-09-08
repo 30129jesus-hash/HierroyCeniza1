@@ -597,10 +597,16 @@ export function performAttack(s: BattleState, side: Side, lane: number, target: 
   attacker.lastHitBy = { side: foe, lane: target.lane };
 
   const hpToDef = armorStrike(s, foe, target.lane, attacker.atk, events, 'hit', attacker.pierce);
-  const hpToAtt = armorStrike(s, side, lane, defender.atk, events);
+  
+  // Unidades a distancia no reciben contraataque ni espinas
+  let hpToAtt = 0;
+  if (!attacker.ranged) {
+    hpToAtt = armorStrike(s, side, lane, defender.atk, events);
+  }
+  
   log(s, side === 'player'
-    ? `${attacker.def.name} ataca a ${defender.def.name}${attacker.pierce ? ' (perforación)' : ''}.`
-    : `${attacker.def.name} ataca a tu ${defender.def.name}.`,
+    ? `${attacker.def.name} ataca a ${defender.def.name}${attacker.pierce ? ' (perforación)' : ''}${attacker.ranged ? ' (a distancia)' : ''}.`
+    : `${attacker.def.name} ataca a tu ${defender.def.name}${attacker.ranged ? ' (a distancia)' : ''}.`,
     side === 'player' ? 'good' : 'bad');
   if (attacker.vamp && hpToDef > 0) healUnit(s, side, lane, hpToDef, events);
   if (defender.vamp && hpToAtt > 0 && s.units[slotOf(foe, target.lane)]) healUnit(s, foe, target.lane, hpToAtt, events);
@@ -621,8 +627,8 @@ export function performAttack(s: BattleState, side: Side, lane: number, target: 
     }
   }
 
-  // espinas del defensor (ignoran armadura)
-  if (s.units[slotOf(foe, target.lane)] && defender.thorns > 0 && s.units[slotOf(side, lane)]) {
+  // espinas del defensor (ignoran armadura) - solo si el atacante NO es a distancia
+  if (!attacker.ranged && s.units[slotOf(foe, target.lane)] && defender.thorns > 0 && s.units[slotOf(side, lane)]) {
     log(s, `Espinas: ${defender.def.name} devuelve ${defender.thorns} de daño.`, side === 'player' ? 'bad' : 'good');
     armorStrike(s, side, lane, defender.thorns, events, 'hit', true);
   }
@@ -928,7 +934,8 @@ export function aiAttackPlan(s: BattleState): AiAttack[] {
       for (const l of candidateLanes) {
         const d = units[l]!;
         const dmg = att.pierce ? att.atk : Math.max(0, att.atk - d.defv);
-        const ret = Math.max(0, d.atk - att.defv) + d.thorns;
+        // Unidades a distancia no reciben contraataque ni espinas
+        const ret = att.ranged ? 0 : Math.max(0, d.atk - att.defv) + d.thorns;
         let score: number;
         if (dmg >= d.hp) {
           score = 10 + d.atk * 1.6 + d.def.cost * 0.6 + (d.taunt ? 3 : 0);
@@ -953,9 +960,12 @@ export function aiAttackPlan(s: BattleState): AiAttack[] {
       const absorbed = att.pierce ? 0 : Math.min(d.defv, att.atk);
       d.defv -= absorbed;
       d.hp -= att.atk - absorbed;
-      const retAbs = Math.min(att.defv, d.atk);
-      att.defv -= retAbs;
-      att.hp -= d.atk - retAbs + d.thorns;
+      // Unidades a distancia no reciben contraataque ni espinas
+      if (!att.ranged) {
+        const retAbs = Math.min(att.defv, d.atk);
+        att.defv -= retAbs;
+        att.hp -= d.atk - retAbs + d.thorns;
+      }
       if (d.hp <= 0) units[chosen.target.lane] = null;
       if (att.hp <= 0) units[chosen.slot] = null;
     }

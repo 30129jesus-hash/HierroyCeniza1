@@ -675,9 +675,9 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
             <ul className="space-y-2 font-body text-sm text-bone-300 list-none">
               <li><b className="text-frost-400">Cada ronda tiene dos fases.</b> Primero el <b>despliegue</b>: juegas cartas con tu energía, luego el enemigo juega las suyas. Después llega la <b>fase de ataque</b>.</li>
               <li><b className="text-gold-400">Ataques a tu elección:</b> clica uno de tus guerreros listos (borde dorado) y luego la presa. Cada guerrero ataca una vez por ronda.</li>
-              <li><b className="text-ember-400">A distancia (arco dorado):</b> solo las unidades a distancia pueden atacar al héroe enemigo. Las demás deben derrotar antes a todas las unidades rivales.</li>
+              <li><b className="text-ember-400">A distancia (arco dorado):</b> solo las unidades a distancia pueden atacar al héroe enemigo. Las demás deben derrotar antes a todas las unidades rivales. <b>Las unidades a distancia no reciben contraataque ni espinas.</b></li>
               <li><b className="text-frost-400">Defensa = armadura:</b> absorbe el daño de los ataques hasta agotarse; el daño sobrante pasa a la Vida (4 de daño contra 2 de defensa = defensa rota y 2 de vida perdidos). Los hechizos y el veneno la ignoran.</li>
-              <li><b className="text-blood-400">Contraataque:</b> si atacas a una unidad, ambos se hieren a la vez. Contra el héroe no hay contraataque. Las <b>Espinas</b> devuelven daño al atacante.</li>
+              <li><b className="text-blood-400">Contraataque:</b> si atacas a una unidad cuerpo a cuerpo, ambos se hieren a la vez. Contra el héroe no hay contraataque. Las <b>Espinas</b> devuelven daño al atacante (excepto a unidades a distancia).</li>
               <li><b className="text-frost-400">Provocación:</b> mientras viva una unidad con escudo azul, hay que atacarla a ella primero.</li>
               <li><b className="text-gold-400">Veloz:</b> ataca la misma ronda en que se despliega. <b>Perforación</b> ignora la armadura. <b>Vampirismo</b> cura con el daño infligido.</li>
               <li><b className="text-venom-400">Ítems y mejoras:</b> pociones de fuego, hielo o veneno dañan; las de vida curan; las piedras y gritos mejoran ATK, Armadura o Vida.</li>

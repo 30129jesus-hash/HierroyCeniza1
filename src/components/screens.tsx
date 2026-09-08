@@ -200,16 +200,6 @@ export function TitleScreen({ onNav }: { onNav: (s: string) => void }) {
           Victorias {meta.totalWins} · Derrotas {meta.totalLosses} · Dragones {meta.dragonsSlain}
         </p>
       </div>
-
-      <div className="hidden lg:flex relative z-10 flex-1 items-center justify-center" aria-hidden>
-        <div className="relative w-[26rem] h-[26rem] text-blood-700/40">
-          <RuneRing className="w-full h-full" />
-          <div className="absolute inset-10 text-ember-500/25"><RuneRing className="w-full h-full" reverse /></div>
-          <div className="absolute inset-0 flex items-center justify-center text-blood-600/70">
-            <Sigil icon="dragon" className="w-40 h-40 anim-bob" />
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
