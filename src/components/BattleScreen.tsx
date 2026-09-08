@@ -585,25 +585,25 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
           <div className="absolute top-20 sm:bottom-4 left-2 sm:left-4 flex flex-col items-center gap-0.5 sm:gap-1">
             <div className="relative">
               {/* Cartas apiladas visualmente - más pequeñas en móvil */}
-              <div className={`relative w-12 h-16 sm:w-16 sm:h-20 ${deckShuffling ? 'animate-pulse' : ''}`}>
-                <div className={`absolute inset-0 bg-gradient-to-br from-ink-700 to-ink-900 border-2 border-frost-400/50 rounded-lg shadow-lg transform rotate-2 ${deckShuffling ? 'animate-bounce' : ''}`} />
-                <div className={`absolute inset-0 bg-gradient-to-br from-ink-700 to-ink-900 border-2 border-frost-400/60 rounded-lg shadow-lg transform -rotate-1 ${deckShuffling ? 'animate-bounce' : ''}`} style={{ animationDelay: '0.1s' }} />
-                <div className={`absolute inset-0 bg-gradient-to-br from-ink-600 to-ink-800 border-2 ${deckShuffling ? 'border-gold-400' : 'border-frost-400'} rounded-lg shadow-xl flex items-center justify-center transition-colors`}>
-                  <Sigil icon="cards" className={`w-6 h-6 sm:w-8 sm:h-8 ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`} />
+              <div className={`relative w-10 h-14 sm:w-12 sm:h-16 ${deckShuffling ? 'animate-pulse' : ''}`}>
+                <div className={`absolute inset-0 bg-gradient-to-br from-ink-700 to-ink-900 border border-frost-400/50 rounded shadow transform rotate-2 ${deckShuffling ? 'animate-bounce' : ''}`} />
+                <div className={`absolute inset-0 bg-gradient-to-br from-ink-700 to-ink-900 border border-frost-400/60 rounded shadow transform -rotate-1 ${deckShuffling ? 'animate-bounce' : ''}`} style={{ animationDelay: '0.1s' }} />
+                <div className={`absolute inset-0 bg-gradient-to-br from-ink-600 to-ink-800 border ${deckShuffling ? 'border-gold-400' : 'border-frost-400'} rounded shadow-lg flex items-center justify-center transition-colors`}>
+                  <Sigil icon="cards" className={`w-5 h-5 sm:w-6 sm:h-6 ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`} />
                 </div>
               </div>
               {/* Contador de cartas */}
-              <div className={`absolute -bottom-1.5 -right-1.5 sm:-bottom-2 sm:-right-2 bg-ink-950 border-2 ${deckShuffling ? 'border-gold-400' : 'border-frost-400'} rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg transition-colors`}>
-                <span className={`font-display text-xs sm:text-sm font-bold ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`}>{state.decks.player.length}</span>
+              <div className={`absolute -bottom-1 -right-1 sm:-bottom-1.5 sm:-right-1.5 bg-ink-950 border ${deckShuffling ? 'border-gold-400' : 'border-frost-400'} rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center shadow transition-colors`}>
+                <span className={`font-display text-[0.6rem] sm:text-xs font-bold ${deckShuffling ? 'text-gold-400' : 'text-frost-400'} transition-colors`}>{state.decks.player.length}</span>
               </div>
               {/* Indicador de rearmado */}
               {deckShuffling && (
-                <div className="absolute -top-6 sm:-top-8 left-1/2 -translate-x-1/2 bg-gold-400/90 text-ink-950 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[0.6rem] sm:text-xs font-bold whitespace-nowrap animate-pulse">
+                <div className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 bg-gold-400/90 text-ink-950 px-1 sm:px-1.5 py-0.5 rounded text-[0.5rem] sm:text-[0.6rem] font-bold whitespace-nowrap animate-pulse">
                   ¡Rearmado!
                 </div>
               )}
             </div>
-            <span className="font-body text-[0.6rem] sm:text-xs text-frost-400/80 uppercase tracking-wider">Mazo</span>
+            <span className="font-body text-[0.5rem] sm:text-[0.6rem] text-frost-400/80 uppercase tracking-wider">Mazo</span>
           </div>
           
           {/* fila enemiga */}
