@@ -373,7 +373,7 @@ export default function BattleScreen({ cfg, onEnd }: Props) {
     const lunging = lunge && ((side === 'player' && lunge.lane === lane) || (side === 'enemy' && lunge.lane === slot - 3));
 
     return (
-      <div key={slot} className="relative flex-1 max-w-[8rem] sm:max-w-[8.75rem] aspect-[3/4]">
+      <div key={slot} className="relative flex-1 max-w-[7.5rem] aspect-[3/4]">
         <button
           onClick={() => clickUnit(side, lane)}
           disabled={!u && !(state.phase === 'deployPlayer' && selCard?.kind === 'unit')}
